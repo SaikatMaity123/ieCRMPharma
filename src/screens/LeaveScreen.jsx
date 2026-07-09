@@ -36,7 +36,21 @@ const LeaveScreen = () => {
   const navigation = useNavigation();
   const [leaveType, setLeaveType] = useState('');
   const [leaveDuration, setLeaveDuration] = useState('');
-  const [leaveDurations, setLeaveDurations] = useState([]); // State for fetched leave durations
+  const [isSaving, setIsSaving] = useState(false);
+  const saveInProgress = useRef(false);
+  //const [leaveDurations, setLeaveDurations] = useState([]); // State for fetched leave durations
+  const [leaveDurations] = useState([
+    {
+      LeaveDuration: 'FULL DAY',
+      DurationCode: 'F',
+      DurationId: 1,
+    },
+    {
+      LeaveDuration: 'HALF DAY',
+      DurationCode: 'H',
+      DurationId: 2,
+    },
+  ]);
   const [fromDate, setFromDate] = useState(null); // Set to null instead of new Date()
   const [toDate, setToDate] = useState(null); // Set to null instead of new Date()
   const [openFromDate, setOpenFromDate] = useState(false);
@@ -47,6 +61,8 @@ const LeaveScreen = () => {
   const scrollRef = useRef(null);
   const [empEmail, setEmpEmail] = useState('');
   const [IDEmployee, setIDEmployee] = useState('');
+  const [useEmpno, setEmpno] = useState('');
+  const [tenantId, settenantId] = useState('');
   const [leaveBalance, setLeaveBalance] = useState([]); // Fetched leave balance
   const [selectedBalance, setSelectedBalance] = useState(null);
   const [leaveSummary, setLeaveSummary] = useState(null);
@@ -95,9 +111,10 @@ const LeaveScreen = () => {
 
   /** 🔹 Fetch API Data After Email is Retrieved */
   useEffect(() => {
-    if (empEmail && companyId !== null) {
-      fetchLeaveBalance(empEmail, currentYear);
-      fetchLeaveDurations();
+    //if (empEmail && companyId !== null) {
+    if (useEmpno && companyId !== null) {
+      fetchLeaveBalance(useEmpno, currentYear);
+      //fetchLeaveDurations();
     }
     const fetchDeviceName = async () => {
       try {
@@ -109,7 +126,8 @@ const LeaveScreen = () => {
       }
     };
     fetchDeviceName();
-  }, [empEmail, companyId]);
+    //}, [empEmail, companyId]);
+  }, [useEmpno, companyId]);
 
   // 🔹 **Check Internet Connection**
   useEffect(() => {
@@ -154,6 +172,8 @@ const LeaveScreen = () => {
         const businessID = userData.BusinessID;
         setEmpEmail(userData.Empemail); // Set Empemail in State
         setIDEmployee(userData.IDEmployee);
+        setEmpno(userData.Empno);
+        settenantId(userData.HRMSLeaveKey);
         setusePassword(userData.Password);
         setUsername(userData.Empname);
         setuseManagerToken(userData.ManagerToken);
@@ -209,49 +229,49 @@ const LeaveScreen = () => {
     }
   };
 
-  const fetchLeaveBalance = async (email, year) => {
-    const url = `${Hrms_URL}RetrieveLeaveBalance?companyId=${companyId}&email=${email}&year=${year}`;
+  // const fetchLeaveBalance = async (email, year) => {
+  //   const url = `${Hrms_URL}RetrieveLeaveBalance?companyId=${companyId}&email=${email}&year=${year}`;
 
-    console.log('API Link:', url);
+  //   console.log('API Link:', url);
 
-    try {
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`HTTP status ${response.status}`);
-      }
-      const data = await response.json();
+  //   try {
+  //     const response = await fetch(url);
+  //     if (!response.ok) {
+  //       throw new Error(`HTTP status ${response.status}`);
+  //     }
+  //     const data = await response.json();
 
-      console.log('API Response:', data); // Debugging
+  //     console.log('API Response:', data); // Debugging
 
-      // Store only leave types for Picker
-      const leaveTypes = data.map(item => ({
-        label: item.codedescription,
-        value: item.leavetypeid,
-        balance: item.balance, // Store balance value
-      }));
+  //     // Store only leave types for Picker
+  //     const leaveTypes = data.map(item => ({
+  //       label: item.codedescription,
+  //       value: item.leavetypeid,
+  //       balance: item.balance, // Store balance value
+  //     }));
 
-      setLeaveBalance(leaveTypes); // Set only relevant data
-    } catch (error) {
-      console.error('Error fetching leave balance:', error);
-    }
-  };
+  //     setLeaveBalance(leaveTypes); // Set only relevant data
+  //   } catch (error) {
+  //     console.error('Error fetching leave balance:', error);
+  //   }
+  // };
 
-  const filteredLeaveTypes =
-    leaveDuration === 'H' // use the actual `DurationCode` for Half Day
-      ? leaveBalance.filter(
-          item =>
-            item.label.toLowerCase() === 'casual leave' ||
-            item.label.toLowerCase() === 'special leave',
-        )
-      : leaveBalance;
+  // const filteredLeaveTypes =
+  //   leaveDuration === 'H' // use the actual `DurationCode` for Half Day
+  //     ? leaveBalance.filter(
+  //         item =>
+  //           item.label.toLowerCase() === 'casual leave' ||
+  //           item.label.toLowerCase() === 'special leave',
+  //       )
+  //     : leaveBalance;
 
-  const handleLeaveTypeChange = value => {
-    setLeaveType(value);
+  // const handleLeaveTypeChange = value => {
+  //   setLeaveType(value);
 
-    // Find balance for selected leave type
-    const selectedLeave = leaveBalance.find(item => item.value === value);
-    setSelectedBalance(selectedLeave ? selectedLeave.balance : null);
-  };
+  //   // Find balance for selected leave type
+  //   const selectedLeave = leaveBalance.find(item => item.value === value);
+  //   setSelectedBalance(selectedLeave ? selectedLeave.balance : null);
+  // };
 
   // Fetch leave durations from the API
   // useEffect(() => {
@@ -267,6 +287,66 @@ const LeaveScreen = () => {
 
   //   fetchLeaveDurations();
   // }, []);
+
+  const fetchLeaveBalance = async (empNo, leavePeriod) => {
+    const url =
+      `${Hrms_URL}LeaveSaaS/EmpWiseLeaveBalanceList` +
+      `?tenantId=${tenantId}` +
+      `&empNo=${empNo}` +
+      `&leavePeriod=${leavePeriod}`;
+
+    console.log('Leave Balance URL :', url);
+
+    try {
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(`HTTP Error ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      console.log('Leave Balance Response :', data);
+
+      const leaveTypes = data.map(item => ({
+        label: item.LeaveTypeName,
+        value: item.LeaveTypeId,
+        balance: item.ClosingBalance,
+        openingBalance: item.CreditQuantity,
+        configId: item.ConfigID,
+      }));
+
+      setLeaveBalance(leaveTypes);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  //If Half Day should allow only Casual Leave, then
+  const filteredLeaveTypes =
+    leaveDuration?.DurationCode === 'H'
+      ? leaveBalance.filter(
+          item => item.label.trim().toUpperCase() === 'CASUAL LEAVE',
+        )
+      : leaveBalance;
+
+  // //If later HR says Sick Leave is also allowed,
+  //   const filteredLeaveTypes =
+  // leaveDuration === 'H'
+  //   ? leaveBalance.filter(item =>
+  //       ['CASUAL LEAVE', 'SICK LEAVE'].includes(
+  //         item.label.trim().toUpperCase(),
+  //       ),
+  //     )
+  //   : leaveBalance;
+
+  const handleLeaveTypeChange = value => {
+    setLeaveType(value);
+
+    const selected = leaveBalance.find(item => item.value === value);
+
+    setSelectedBalance(selected ? selected.balance : null);
+  };
 
   // Function to calculate leave days
 
@@ -329,34 +409,95 @@ const LeaveScreen = () => {
     //const companyId = 1; // Hardcoded company ID
     const email = empEmail; // Employee Email from AsyncStorage
     const leaveId = encodeURIComponent(leaveType); // Leave ID (assuming it's the selected leaveType)
-    const formattedStartDate = moment(fromDate).format('MM-DD-YYYY'); // Format start date
+    // const formattedStartDate = moment(fromDate).format('MM-DD-YYYY'); // Format start date
+    // const formattedEndDate = toDate
+    //   ? moment(toDate).format('MM-DD-YYYY')
+    //   : formattedStartDate;
+
+    const formattedStartDate = moment(fromDate).format('YYYY-MM-DD'); // Format start date
     const formattedEndDate = toDate
-      ? moment(toDate).format('MM-DD-YYYY')
+      ? moment(toDate).format('YYYY-MM-DD')
       : formattedStartDate; // Format end date or use startDate
     const encodedReason = reason; // Encode reason to prevent API errors
 
     let apiUrl = '';
     console.log('Raw Email:', empEmail);
     // **Call the API based on Leave Duration selection**
-    if (leaveDuration === 'F') {
-      if (businessId?.toString().trim().toUpperCase() === 'GENI-QST-536') {
-        apiUrl = `${Hrms_URL}FullDayLeaveApplyGeniquest?companyId=${companyId}&leaveId=${leaveId}&startDate=${formattedStartDate}&endDate=${formattedEndDate}&email=${email}&leaveReason=${encodedReason}&isEncashed=${selectedEncashment}`;
-        console.log('Full Day Leave API URL for Geniquest:', apiUrl); // Debugging
-      } else {
-        // API for Full Day Leave
-        apiUrl = `${Hrms_URL}FullDayLeaveApply?companyId=${companyId}&leaveId=${leaveId}&startDate=${formattedStartDate}&endDate=${formattedEndDate}&email=${email}&leaveReason=${encodedReason}`;
-        console.log('Full Day Leave API URL:', apiUrl); // Debugging
-      }
-    } else if (leaveDuration === 'H') {
-      if (businessId?.toString().trim().toUpperCase() === 'GENI-QST-536') {
-        // API for Half Day Leave
-        apiUrl = `${Hrms_URL}HalfDayLeaveApplyGeniquest?companyId=${companyId}&leaveId=${leaveId}&startDate=${formattedStartDate}&email=${email}&leaveReason=${encodedReason}`;
-        console.log('Half Day Leave API URL for Geniquest:', apiUrl); // Debugging
-      } else {
-        // API for Half Day Leave
-        apiUrl = `${Hrms_URL}HalfDayLeaveApply?companyId=${companyId}&leaveId=${leaveId}&startDate=${formattedStartDate}&email=${email}&leaveReason=${encodedReason}`;
-        console.log('Half Day Leave API URL:', apiUrl); // Debugging
-      }
+    // if (leaveDuration === 'F') {
+    //   if (businessId?.toString().trim().toUpperCase() === 'GENI-QST-536') {
+    //     apiUrl = `${Hrms_URL}FullDayLeaveApplyGeniquest?companyId=${companyId}&leaveId=${leaveId}&startDate=${formattedStartDate}&endDate=${formattedEndDate}&email=${email}&leaveReason=${encodedReason}&isEncashed=${selectedEncashment}`;
+    //     console.log('Full Day Leave API URL for Geniquest:', apiUrl); // Debugging
+    //   } else {
+    //     // API for Full Day Leave
+    //     //apiUrl = `${Hrms_URL}FullDayLeaveApply?companyId=${companyId}&leaveId=${leaveId}&startDate=${formattedStartDate}&endDate=${formattedEndDate}&email=${email}&leaveReason=${encodedReason}`;
+
+    //     console.log('Full Day Leave API URL:', apiUrl); // Debugging
+    //   }
+    // } else if (leaveDuration === 'H') {
+    //   if (businessId?.toString().trim().toUpperCase() === 'GENI-QST-536') {
+    //     // API for Half Day Leave
+    //     //apiUrl = `${Hrms_URL}HalfDayLeaveApplyGeniquest?companyId=${companyId}&leaveId=${leaveId}&startDate=${formattedStartDate}&email=${email}&leaveReason=${encodedReason}`;
+    //     apiUrl =
+    //       `${Hrms_URL}LeavePreviewAndApplySaaS` +
+    //       `?tenantId=6B1B6590-C5CA-4FD6-A0BB-FEBA6DB8FB14` +
+    //       `&empNo=${useEmpno}` +
+    //       `&leaveDuration=${leaveDuration.DurationId}` +
+    //       `&leaveTypeId=${leaveType}` +
+    //       `&fromDate=${formattedStartDate}` +
+    //       `&toDate=${formattedToDate}` +
+    //       `&reason=${encodeURIComponent(reason)}` +
+    //       `&appliedBy=${empNo}` +
+    //       `&status=0` +
+    //       `&applyFrom=ieCRM`;
+    //     console.log('Half Day Leave API URL for Geniquest:', apiUrl); // Debugging
+    //   } else {
+    //     // API for Half Day Leave
+    //     //apiUrl = `${Hrms_URL}HalfDayLeaveApply?companyId=${companyId}&leaveId=${leaveId}&startDate=${formattedStartDate}&email=${email}&leaveReason=${encodedReason}`;
+    //     apiUrl =
+    //       `${Hrms_URL}LeavePreviewAndApplySaaS` +
+    //       `?tenantId=6B1B6590-C5CA-4FD6-A0BB-FEBA6DB8FB14` +
+    //       `&empNo=${useEmpno}` +
+    //       `&leaveDuration=${leaveDuration.DurationId}` +
+    //       `&leaveTypeId=${leaveId}` +
+    //       `&fromDate=${formattedStartDate}` +
+    //       `&toDate=${formattedToDate}` +
+    //       `&reason=${encodeURIComponent(reason)}` +
+    //       `&appliedBy=${empNo}` +
+    //       `&status=0` +
+    //       `&applyFrom=ieCRM`;
+
+    //     console.log('Half Day Leave API URL:', apiUrl); // Debugging
+    //   }
+    // }
+    if (leaveDuration.DurationCode === 'F') {
+      //apiUrl = `${Hrms_URL}FullDayLeaveApply?companyId=${companyId}&leaveId=${leaveId}&startDate=${formattedStartDate}&endDate=${formattedEndDate}&email=${email}&leaveReason=${encodedReason}`;
+      apiUrl =
+        `${Hrms_URL}LeavePreviewAndApplySaaS` +
+        `?tenantId=${tenantId}` +
+        `&empNo=${useEmpno}` +
+        `&leaveDuration=${leaveDuration.DurationId}` +
+        `&leaveTypeId=${leaveId}` +
+        `&fromDate=${formattedStartDate}` +
+        `&toDate=${formattedEndDate}` +
+        `&reason=${encodeURIComponent(reason)}` +
+        `&appliedBy=${useEmpno}` +
+        `&status=0` +
+        `&applyFrom=ieCRM`;
+      console.log('Full Day Leave API URL:', apiUrl); // Debugging
+    } else if (leaveDuration.DurationCode === 'H') {
+      apiUrl =
+        `${Hrms_URL}LeavePreviewAndApplySaaS` +
+        `?tenantId=${tenantId}` +
+        `&empNo=${useEmpno}` +
+        `&leaveDuration=${leaveDuration.DurationId}` +
+        `&leaveTypeId=${leaveId}` +
+        `&fromDate=${formattedStartDate}` +
+        `&toDate=${formattedStartDate}` +
+        `&reason=${encodeURIComponent(reason)}` +
+        `&appliedBy=${useEmpno}` +
+        `&status=0` +
+        `&applyFrom=ieCRM`;
+      console.log('Half Day Leave API URL:', apiUrl); // Debugging
     } else {
       Alert.alert(
         'Invalid Selection',
@@ -366,7 +507,7 @@ const LeaveScreen = () => {
       return;
     }
 
-    // console.log("API Request URL:", apiUrl); // Debugging
+    console.log('API Request URL:', apiUrl); // Debugging
 
     try {
       const response = await fetch(apiUrl, {
@@ -377,28 +518,43 @@ const LeaveScreen = () => {
         },
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP status ${response.status}`);
-      }
+      // if (!response.ok) {
+      //   throw new Error(`HTTP status ${response.status}`);
+      // }
 
-      const responseData = await response.json();
-      console.log('API Response:', responseData); // Debugging
+      // const responseData = await response.json();
+      // console.log('API Response:', responseData); // Debugging
 
-      if (responseData.length > 0) {
-        const status = responseData[0].Status;
+      // if (responseData.length > 0) {
+      //   const status = responseData[0].Status;
 
-        if (status === '1') {
-          // ✅ **Show full leave details in the modal**
-          setLeaveSummary(responseData[0]);
-          setShowSummary(true);
-        } else {
-          //  **Show only the Status text in an alert**
-          Alert.alert('Leave Application Failed', status, [{text: 'OK'}]);
-        }
+      //   if (status === '1') {
+      //     // ✅ **Show full leave details in the modal**
+      //     setLeaveSummary(responseData[0]);
+      //     setShowSummary(true);
+      //   } else {
+      //     //  **Show only the Status text in an alert**
+      //     Alert.alert('Leave Application Failed', status, [{text: 'OK'}]);
+      //   }
+      // } else {
+      //   Alert.alert('Error', 'Unexpected response from server.', [
+      //     {text: 'OK'},
+      //   ]);
+      // }
+
+      const data = await response.json();
+
+      const leaveDetails = data.find(item => item.LeaveTypeName);
+      const output = data.find(item => item.OutputStatus !== undefined);
+
+      const status = output?.OutputStatus ?? '';
+      console.log('OutputStatus:', JSON.stringify(leaveDetails));
+
+      if (status) {
+        Alert.alert('Message', status);
       } else {
-        Alert.alert('Error', 'Unexpected response from server.', [
-          {text: 'OK'},
-        ]);
+        setLeaveSummary(leaveDetails);
+        setShowSummary(true);
       }
     } catch (error) {
       console.error('Error submitting leave:', error);
@@ -421,58 +577,148 @@ const LeaveScreen = () => {
     setLeaveSummary(null);
   };
 
-  // Function to Save Data IN HRMS  Database
+  // // Function to Save Data IN HRMS  Database
+  // const handleSave = async () => {
+  //   var date = moment().utcOffset('+05:30').format('YYYY-MM-DD hh:mm:ss A');
+  //   // const companyId = 1; // Hardcoded Company ID
+  //   const currentYear = new Date().getFullYear();
+  //   const nextYear = currentYear + 1;
+  //   const FinancialYear = `${currentYear}-${nextYear}`;
+  //   const email = empEmail; // Employee Email from AsyncStorage
+  //   const leaveTypeName = leaveSummary.leavetype;
+  //   const leaveDurationName = leaveSummary.duration;
+  //   // Format Dates for API in "MM-DD-YYYY" format
+  //   // const formattedFromDate = moment(leaveSummary.leavestartdate, "MM-DD-YYYY").format("MM-DD-YYYY");
+  //   // const formattedToDate = moment(leaveSummary.leaveenddate, "MM-DD-YYYY").format("MM-DD-YYYY");
+  //   // const prefixFromDate = moment(leaveSummary.prefixfromdate, "MM-DD-YYYY").format("MM-DD-YYYY");
+  //   // const suffixToDate = moment(leaveSummary.sufixtodate, "MM-DD-YYYY").format("MM-DD-YYYY");
+  //   const formattedFromDate = moment(
+  //     leaveSummary.leavestartdate,
+  //     'MM-DD-YYYY',
+  //   ).format('YYYY-MM-DD');
+  //   const formattedToDate = moment(
+  //     leaveSummary.leaveenddate,
+  //     'MM-DD-YYYY',
+  //   ).format('YYYY-MM-DD');
+  //   const prefixFromDate = moment(
+  //     leaveSummary.prefixfromdate,
+  //     'MM-DD-YYYY',
+  //   ).format('YYYY-MM-DD');
+  //   const suffixToDate = moment(leaveSummary.sufixtodate, 'MM-DD-YYYY').format(
+  //     'YYYY-MM-DD',
+  //   );
+
+  //   const Applicationame = `ieCRM_Mobile - ${device}`;
+
+  //   // Ensure noOfDays is formatted correctly (e.g., 2.00)
+  //   const formattedNoOfDays = leaveSummary.noofdays;
+
+  //   // Construct API URL with parameters
+  //   let apiUrl = ''; // ✅ Declare apiUrl outside
+
+  //   if (businessId?.toString().trim().toUpperCase() === 'GENI-QST-536') {
+  //     apiUrl = `${Hrms_URL}ApplyLeaveGeniquest?companyId=${companyId}&email=${email}&leaveType=${leaveTypeName}&fromDate=${formattedFromDate}&toDate=${formattedToDate}&noOfDays=${formattedNoOfDays}&leaveReason=${reason}&duration=${leaveDurationName}&suffixToDate=${suffixToDate}&prefixFromDate=${prefixFromDate}&applicationType=${Applicationame}&FinancialYear=${FinancialYear}&isEncashed=${selectedEncashment}`;
+
+  //     console.log('API Request URL for Geniquest:', apiUrl);
+  //   } else {
+  //     apiUrl = `${Hrms_URL}ApplyLeave?companyId=${companyId}&email=${email}&leaveType=${leaveTypeName}&fromDate=${formattedFromDate}&toDate=${formattedToDate}&noOfDays=${formattedNoOfDays}&leaveReason=${reason}&duration=${leaveDurationName}&suffixToDate=${suffixToDate}&prefixFromDate=${prefixFromDate}&applicationType=${Applicationame}`;
+
+  //     console.log('API Request URL:', apiUrl);
+  //   }
+
+  //   try {
+  //     const response = await fetch(apiUrl, {
+  //       method: 'POST', // Use POST request
+  //       headers: {
+  //         Accept: 'application/json',
+  //         'Content-Type': 'application/json',
+  //       },
+  //     });
+
+  //     if (!response.ok) {
+  //       throw new Error(`HTTP status ${response.status}`);
+  //     }
+
+  //     const responseData = await response.json();
+  //     console.log('API Response:', responseData); // Debugging
+
+  //     // ✅ **Handle Empty Message Case**
+  //     if (responseData.length > 0) {
+  //       const message = responseData[0].Message;
+  //       if (!message || message.trim() === '') {
+  //         Alert.alert(
+  //           'Leave Submission Failed',
+  //           'You Already Applied for the Leave',
+  //           [{text: 'OK'}],
+  //         );
+  //         await handleSaveCrm('Error'); // 👈 Pass Error if duplicate
+  //       } else {
+  //         Alert.alert('Leave Submitted', message, [{text: 'OK'}]);
+  //         await handleSaveCrm('Success'); // 👈 Pass Success
+  //         // 🔔 Show local notification
+  //         showLocalNotification(
+  //           `Hi ${username}`,
+  //           `Successfully submitted your ${leaveTypeName} from ${formattedFromDate} - ${formattedToDate} .\nDate & Time: ${
+  //             date || 'N/A'
+  //           }.`,
+  //         );
+  //         const token = await getAccessToken(); // get Bearer token
+  //         const messageTitle = 'New Leave Submitted';
+  //         const messageBody = `Employee ${username} submitted ${leaveTypeName} from ${formattedFromDate} - ${formattedToDate} successfully on ${date}`;
+  //         await sendNotificationToManager(
+  //           useManagerToken,
+  //           messageTitle,
+  //           messageBody,
+  //           token,
+  //         );
+  //       }
+  //     } else {
+  //       Alert.alert('Error', 'Unexpected response from server.', [
+  //         {text: 'OK'},
+  //       ]);
+  //       await handleSaveCrm('Error');
+  //     }
+
+  //     setShowSummary(false); // Close modal after saving
+  //     resetForm(); // Reset form fields
+  //   } catch (error) {
+  //     console.error('Error submitting leave:', error);
+  //     Alert.alert(
+  //       'Error',
+  //       'Failed to submit leave request. Please try again.',
+  //       [{text: 'OK'}],
+  //     );
+  //     //await handleSaveCrm("Error");
+  //   }
+  // };
+
+  // Function To Save Data In CRM Database
   const handleSave = async () => {
-    var date = moment().utcOffset('+05:30').format('YYYY-MM-DD hh:mm:ss A');
-    // const companyId = 1; // Hardcoded Company ID
-    const currentYear = new Date().getFullYear();
-    const nextYear = currentYear + 1;
-    const FinancialYear = `${currentYear}-${nextYear}`;
-    const email = empEmail; // Employee Email from AsyncStorage
-    const leaveTypeName = leaveSummary.leavetype;
-    const leaveDurationName = leaveSummary.duration;
-    // Format Dates for API in "MM-DD-YYYY" format
-    // const formattedFromDate = moment(leaveSummary.leavestartdate, "MM-DD-YYYY").format("MM-DD-YYYY");
-    // const formattedToDate = moment(leaveSummary.leaveenddate, "MM-DD-YYYY").format("MM-DD-YYYY");
-    // const prefixFromDate = moment(leaveSummary.prefixfromdate, "MM-DD-YYYY").format("MM-DD-YYYY");
-    // const suffixToDate = moment(leaveSummary.sufixtodate, "MM-DD-YYYY").format("MM-DD-YYYY");
-    const formattedFromDate = moment(
-      leaveSummary.leavestartdate,
-      'MM-DD-YYYY',
-    ).format('YYYY-MM-DD');
-    const formattedToDate = moment(
-      leaveSummary.leaveenddate,
-      'MM-DD-YYYY',
-    ).format('YYYY-MM-DD');
-    const prefixFromDate = moment(
-      leaveSummary.prefixfromdate,
-      'MM-DD-YYYY',
-    ).format('YYYY-MM-DD');
-    const suffixToDate = moment(leaveSummary.sufixtodate, 'MM-DD-YYYY').format(
-      'YYYY-MM-DD',
-    );
-
-    const Applicationame = `ieCRM_Mobile - ${device}`;
-
-    // Ensure noOfDays is formatted correctly (e.g., 2.00)
-    const formattedNoOfDays = leaveSummary.noofdays;
-
-    // Construct API URL with parameters
-    let apiUrl = ''; // ✅ Declare apiUrl outside
-
-    if (businessId?.toString().trim().toUpperCase() === 'GENI-QST-536') {
-      apiUrl = `${Hrms_URL}ApplyLeaveGeniquest?companyId=${companyId}&email=${email}&leaveType=${leaveTypeName}&fromDate=${formattedFromDate}&toDate=${formattedToDate}&noOfDays=${formattedNoOfDays}&leaveReason=${reason}&duration=${leaveDurationName}&suffixToDate=${suffixToDate}&prefixFromDate=${prefixFromDate}&applicationType=${Applicationame}&FinancialYear=${FinancialYear}&isEncashed=${selectedEncashment}`;
-
-      console.log('API Request URL for Geniquest:', apiUrl);
-    } else {
-      apiUrl = `${Hrms_URL}ApplyLeave?companyId=${companyId}&email=${email}&leaveType=${leaveTypeName}&fromDate=${formattedFromDate}&toDate=${formattedToDate}&noOfDays=${formattedNoOfDays}&leaveReason=${reason}&duration=${leaveDurationName}&suffixToDate=${suffixToDate}&prefixFromDate=${prefixFromDate}&applicationType=${Applicationame}`;
-
-      console.log('API Request URL:', apiUrl);
+    const leaveId = encodeURIComponent(leaveType);
+    if (saveInProgress.current) {
+      return;
     }
 
+    saveInProgress.current = true;
+    setIsSaving(true);
+
     try {
+      const apiUrl =
+        `${Hrms_URL}LeavePreviewAndApplySaaS` +
+        `?tenantId=${tenantId}` +
+        `&empNo=${useEmpno}` +
+        `&leaveDuration=${leaveDuration.DurationId}` +
+        `&leaveTypeId=${leaveId}` +
+        `&fromDate=${moment(fromDate).format('YYYY-MM-DD')}` +
+        `&toDate=${moment(toDate).format('YYYY-MM-DD')}` +
+        `&reason=${encodeURIComponent(reason)}` +
+        `&appliedBy=${useEmpno}` +
+        `&status=confrim` +
+        `&applyFrom=ieCRM`;
+
+      console.log('Confirm API :', apiUrl);
       const response = await fetch(apiUrl, {
-        method: 'POST', // Use POST request
+        method: 'POST',
         headers: {
           Accept: 'application/json',
           'Content-Type': 'application/json',
@@ -480,63 +726,120 @@ const LeaveScreen = () => {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP status ${response.status}`);
+        throw new Error(`HTTP ${response.status}`);
       }
 
-      const responseData = await response.json();
-      console.log('API Response:', responseData); // Debugging
+      // const data = await response.json();
 
-      // ✅ **Handle Empty Message Case**
-      if (responseData.length > 0) {
-        const message = responseData[0].Message;
-        if (!message || message.trim() === '') {
-          Alert.alert(
-            'Leave Submission Failed',
-            'You Already Applied for the Leave',
-            [{text: 'OK'}],
-          );
-          await handleSaveCrm('Error'); // 👈 Pass Error if duplicate
-        } else {
-          Alert.alert('Leave Submitted', message, [{text: 'OK'}]);
-          await handleSaveCrm('Success'); // 👈 Pass Success
-          // 🔔 Show local notification
-          showLocalNotification(
-            `Hi ${username}`,
-            `Successfully submitted your ${leaveTypeName} from ${formattedFromDate} - ${formattedToDate} .\nDate & Time: ${
-              date || 'N/A'
-            }.`,
-          );
-          const token = await getAccessToken(); // get Bearer token
-          const messageTitle = 'New Leave Submitted';
-          const messageBody = `Employee ${username} submitted ${leaveTypeName} from ${formattedFromDate} - ${formattedToDate} successfully on ${date}`;
-          await sendNotificationToManager(
-            useManagerToken,
-            messageTitle,
-            messageBody,
-            token,
-          );
-        }
+      // console.log('Confirm Response :', data);
+
+      // const leaveDetails = data.find(item => item.LeaveTypeName);
+
+      // const output = data.find(item => item.OutputStatus !== undefined);
+      // const message = output?.OutputStatus ?? '';
+
+      // console.log('OutputStatus:', JSON.stringify(message));
+
+      // const normalizedMessage = message
+      //   .replace(/\r?\n/g, ' ') // Remove line breaks
+      //   .trim();
+
+      // if (
+      //   normalizedMessage
+      //     .toLowerCase()
+      //     .includes('leave application successfully submitted')
+      // ) {
+      //   Alert.alert('Success', normalizedMessage, [
+      //     {
+      //       text: 'OK',
+      //       onPress: async () => {
+      //         try {
+      //           setShowSummary(false);
+      //           resetForm();
+
+      //           showLocalNotification(`Hi ${username}`, message);
+
+      //           // const token = await getAccessToken();
+
+      //           // const messageTitle = 'New Leave Submitted';
+      //           // const messageBody = `Employee ${username} submitted leave successfully.`;
+
+      //           // await sendNotificationToManager(
+      //           //   useManagerToken,
+      //           //   messageTitle,
+      //           //   messageBody,
+      //           //   token,
+      //           // );
+
+      //           console.log('Navigating...');
+
+      //           navigation.reset({
+      //             index: 0,
+      //             routes: [{name: 'approvalDashboard'}],
+      //           });
+      //         } catch (err) {
+      //           console.log('onPress Error:', err);
+      //         }
+      //       },
+      //     },
+      //   ]);
+      // } else {
+      //   Alert.alert('Message', normalizedMessage);
+      // }
+
+      //  const data = await response.json();
+      // const output = data.find(item => item.OutputStatus);
+
+      const data = await response.json();
+
+      const output = data.find(item => item.OutputStatus !== undefined);
+
+      const status = output?.OutputStatus ?? '';
+
+      if (status === 'You have already applied leave for the selected dates.') {
+        Alert.alert('Message', status);
+        setShowSummary(false);
       } else {
-        Alert.alert('Error', 'Unexpected response from server.', [
-          {text: 'OK'},
-        ]);
-        await handleSaveCrm('Error');
-      }
+        setShowSummary(false);
+        resetForm();
+        showLocalNotification(`Hi ${username}`, status);
 
-      setShowSummary(false); // Close modal after saving
-      resetForm(); // Reset form fields
+        const token = await getAccessToken();
+
+        const messageTitle = 'New Leave Submitted';
+        const messageBody = `Employee ${username} submitted leave successfully.`;
+
+        await sendNotificationToManager(
+          useManagerToken,
+          messageTitle,
+          messageBody,
+          token,
+        );
+        // Alert.alert('Success', output.OutputStatus, [
+        //   {
+        //     text: 'OK',
+        //     onPress: () => navigation.navigate('approvalDashboard'),
+        //   },
+        // ]);
+
+        await handleSaveCrm('Success');
+        // navigation.reset({
+        //   index: 0,
+        //   routes: [{name: 'approvalDashboard'}],
+        // });
+      }
     } catch (error) {
-      console.error('Error submitting leave:', error);
-      Alert.alert(
-        'Error',
-        'Failed to submit leave request. Please try again.',
-        [{text: 'OK'}],
-      );
-      //await handleSaveCrm("Error");
+      console.log(error);
+
+      Alert.alert('Error', 'Failed to submit leave request.');
+
+      await handleSaveCrm('Error');
+    } finally {
+      saveInProgress.current = false;
+      setIsSaving(false);
     }
   };
 
-  // Function To Save Data In CRM Database
   const handleSaveCrm = async status => {
     const IDApplication = 0;
     const EntryUser = empEmail; // Employee Email from AsyncStorage
@@ -565,17 +868,21 @@ const LeaveScreen = () => {
     const formattedNoOfDays = leaveSummary.noofdays;
     const Remarks = leaveSummary.leavereason;
     //const Businessid = "MEND-PVTL-890";
+    const durationType =
+      leaveSummary?.LeaveDuration === 'Full Day'
+        ? 'Fullday Leave'
+        : 'Halfday Leave';
 
     // Construct Request Payload
     const requestBody = {
       IDApplication: IDApplication,
-      LeaveType: leaveSummary.leavetype,
+      LeaveType: leaveSummary?.LeaveTypeName,
       IDEmployee: IdEmployee,
-      LeaveFrom: formattedFromDate,
-      LeaveTo: formattedToDate,
-      LeaveDays: formattedNoOfDays,
-      Remarks: leaveSummary.leavereason,
-      DurationType: leaveSummary.duration,
+      LeaveFrom: leaveSummary?.fromdate?.split('T')[0],
+      LeaveTo: leaveSummary?.todate?.split('T')[0],
+      LeaveDays: leaveSummary?.TotalleaveApplied,
+      Remarks: leaveSummary?.Reason,
+      DurationType: durationType,
       EntryUser: EntryUser,
       Businessid: businessId,
       Status: status,
@@ -678,7 +985,7 @@ const LeaveScreen = () => {
     }
     try {
       const url =
-        'https://fcm.googleapis.com/v1/projects/iecrmpharma/messages:send';
+        'https://fcm.googleapis.com/v1/projects/iecrmnotificationapp-5ed0c/messages:send';
 
       const message = {
         message: {
@@ -763,31 +1070,29 @@ const LeaveScreen = () => {
   return (
     <KeyboardAwareLayout>
       <StatusBar barStyle="light-content" backgroundColor="#a9ddfaff" />
-      <ImageBackground
+      {/* <ImageBackground
         source={require('../images/bg2.png')}
         style={styles.background}
-        resizeMode="cover">
-        <KeyboardAwareScrollView
-          contentContainerStyle={styles.scrollContainer}
-          keyboardShouldPersistTaps="handled"
-          enableOnAndroid={true}
-          extraScrollHeight={Platform.OS === 'ios' ? 100 : 100}
-          enableAutomaticScroll={true}
-          ref={scrollRef}>
-          {/* Show Internet Warning when disconnected */}
-          {!isConnected && (
-            <View style={styles.noInternetContainer}>
-              <Text style={styles.noInternetText}>
-                ⚠ No Internet Connection
-              </Text>
-            </View>
-          )}
+        resizeMode="cover"> */}
+      <KeyboardAwareScrollView
+        contentContainerStyle={styles.scrollContainer}
+        keyboardShouldPersistTaps="handled"
+        enableOnAndroid={true}
+        extraScrollHeight={Platform.OS === 'ios' ? 100 : 100}
+        enableAutomaticScroll={true}
+        ref={scrollRef}>
+        {/* Show Internet Warning when disconnected */}
+        {!isConnected && (
+          <View style={styles.noInternetContainer}>
+            <Text style={styles.noInternetText}>⚠ No Internet Connection</Text>
+          </View>
+        )}
 
-          <View style={styles.formContainer}>
-            {/* Leave Duration Dropdown */}
-            <Text style={styles.label}>Select Leave Duration</Text>
+        <View style={styles.formContainer}>
+          {/* Leave Duration Dropdown */}
+          <Text style={styles.label}>Select Leave Duration</Text>
 
-            <Dropdown
+          {/* <Dropdown
               style={styles.picker1}
               data={leaveDurations.map(d => ({
                 label: d.LeaveDuration,
@@ -801,15 +1106,24 @@ const LeaveScreen = () => {
               search
               searchPlaceholder="Search duration..."
               placeholderStyle={{color: '#999'}}
-            />
+            /> */}
 
-            {/* Leave Type Dropdown */}
-            <Text style={styles.label}>Select Leave Type</Text>
+          <Dropdown
+            style={styles.picker1}
+            data={leaveDurations}
+            labelField="LeaveDuration"
+            valueField="DurationId"
+            value={leaveDuration?.DurationId}
+            onChange={item => setLeaveDuration(item)}
+          />
 
-            <View style={styles.dropdownContainer}>
-              {/* Picker for selecting Leave Type */}
+          {/* Leave Type Dropdown */}
+          <Text style={styles.label}>Select Leave Type</Text>
 
-              <Dropdown
+          <View style={styles.dropdownContainer}>
+            {/* Picker for selecting Leave Type */}
+
+            {/* <Dropdown
                 style={styles.picker1}
                 data={filteredLeaveTypes.map(item => ({
                   label: item.label,
@@ -823,67 +1137,90 @@ const LeaveScreen = () => {
                 search
                 searchPlaceholder="Search Leave Type..."
                 placeholderStyle={{color: '#999'}}
-              />
+              /> */}
 
-              {/* Display Leave Balance beside the selected Leave Type */}
-              {selectedBalance !== null && (
+            <Dropdown
+              style={styles.picker1}
+              data={filteredLeaveTypes.map(item => ({
+                label: item.label,
+                value: item.value,
+              }))}
+              labelField="label"
+              valueField="value"
+              placeholder="Select Leave Type"
+              value={leaveType}
+              onChange={item => handleLeaveTypeChange(item.value)}
+              search
+              searchPlaceholder="Search Leave Type..."
+            />
+
+            {/* Display Leave Balance beside the selected Leave Type */}
+            {/* {selectedBalance !== null && (
                 <View style={styles.balanceContainer}>
                   <Text style={styles.balanceText}>
                     Available Balance: {selectedBalance}{' '}
                   </Text>
                 </View>
-              )}
+              )} */}
+
+            {selectedBalance !== null && (
+              <View style={styles.balanceContainer}>
+                <Text style={styles.balanceText}>
+                  Available Balance : {selectedBalance}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* From Date Picker */}
+          <Text style={styles.label}>From Date</Text>
+          <TouchableOpacity
+            onPress={() => setOpenFromDate(true)}
+            style={styles.dateButton}>
+            <View style={{alignSelf: 'flex-start', paddingHorizontal: 10}}>
+              <Text style={styles.dateText}>
+                {fromDate ? fromDate.toDateString() : 'Select Date'}
+              </Text>
             </View>
+          </TouchableOpacity>
 
-            {/* From Date Picker */}
-            <Text style={styles.label}>From Date</Text>
-            <TouchableOpacity
-              onPress={() => setOpenFromDate(true)}
-              style={styles.dateButton}>
-              <View style={{alignSelf: 'flex-start', paddingHorizontal: 10}}>
-                <Text style={styles.dateText}>
-                  {fromDate ? fromDate.toDateString() : 'Select Date'}
-                </Text>
-              </View>
-            </TouchableOpacity>
+          <DatePicker
+            modal
+            open={openFromDate}
+            date={fromDate || new Date()}
+            mode="date"
+            onConfirm={date => {
+              setOpenFromDate(false);
+              handleFromDateSelect(date);
+            }}
+            onCancel={() => setOpenFromDate(false)}
+          />
 
-            <DatePicker
-              modal
-              open={openFromDate}
-              date={fromDate || new Date()}
-              mode="date"
-              onConfirm={date => {
-                setOpenFromDate(false);
-                handleFromDateSelect(date);
-              }}
-              onCancel={() => setOpenFromDate(false)}
-            />
+          {/* To Date Picker */}
+          <Text style={styles.label}>To Date</Text>
+          <TouchableOpacity
+            onPress={() => setOpenToDate(true)}
+            style={styles.dateButton}>
+            <View style={{alignSelf: 'flex-start', paddingHorizontal: 10}}>
+              <Text style={styles.dateText}>
+                {toDate ? toDate.toDateString() : 'Select Date'}
+              </Text>
+            </View>
+          </TouchableOpacity>
+          <DatePicker
+            modal
+            open={openToDate}
+            date={toDate || new Date()}
+            mode="date"
+            onConfirm={date => {
+              setOpenToDate(false);
+              handleToDateSelect(date);
+            }}
+            onCancel={() => setOpenToDate(false)}
+          />
 
-            {/* To Date Picker */}
-            <Text style={styles.label}>To Date</Text>
-            <TouchableOpacity
-              onPress={() => setOpenToDate(true)}
-              style={styles.dateButton}>
-              <View style={{alignSelf: 'flex-start', paddingHorizontal: 10}}>
-                <Text style={styles.dateText}>
-                  {toDate ? toDate.toDateString() : 'Select Date'}
-                </Text>
-              </View>
-            </TouchableOpacity>
-            <DatePicker
-              modal
-              open={openToDate}
-              date={toDate || new Date()}
-              mode="date"
-              onConfirm={date => {
-                setOpenToDate(false);
-                handleToDateSelect(date);
-              }}
-              onCancel={() => setOpenToDate(false)}
-            />
-
-            {/* Leave Days - Auto Calculated */}
-            {/* <Text style={styles.label}>Leave Days</Text>
+          {/* Leave Days - Auto Calculated */}
+          {/* <Text style={styles.label}>Leave Days</Text>
               <TextInput
                 style={styles.input}
                 keyboardType="numeric"
@@ -893,91 +1230,101 @@ const LeaveScreen = () => {
                 editable={false}
               /> */}
 
-            {businessId?.toString().trim().toUpperCase() === 'GENI-QST-536' &&
-              leaveType?.toString() === '2' && (
-                <>
-                  <Text style={styles.label}>Encashment</Text>
-                  <Dropdown
-                    style={styles.picker1}
-                    containerStyle={{borderRadius: 8}}
-                    data={[
-                      {label: 'YES', value: '1'},
-                      {label: 'NO', value: '0'},
-                    ]}
-                    labelField="label"
-                    valueField="value"
-                    placeholder="Select Option"
-                    search={false}
-                    value={selectedEncashment}
-                    onChange={item => setSelectedEncashment(item.value)}
-                  />
-                </>
-              )}
+          {businessId?.toString().trim().toUpperCase() === 'GENI-QST-536' &&
+            leaveType?.toString() === '2' && (
+              <>
+                <Text style={styles.label}>Encashment</Text>
+                <Dropdown
+                  style={styles.picker1}
+                  containerStyle={{borderRadius: 8}}
+                  data={[
+                    {label: 'YES', value: '1'},
+                    {label: 'NO', value: '0'},
+                  ]}
+                  labelField="label"
+                  valueField="value"
+                  placeholder="Select Option"
+                  search={false}
+                  value={selectedEncashment}
+                  onChange={item => setSelectedEncashment(item.value)}
+                />
+              </>
+            )}
 
-            {/* Reason Input */}
-            <Text style={styles.label}>Reason</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Enter reason for leave"
-              placeholderTextColor="#999"
-              multiline
-              numberOfLines={3}
-              value={reason}
-              onChangeText={setReason}
-              onFocus={() => scrollRef.current.scrollToEnd({animated: true})}
-            />
+          {/* Reason Input */}
+          <Text style={styles.label}>Reason</Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            placeholder="Enter reason for leave"
+            placeholderTextColor="#999"
+            multiline
+            numberOfLines={3}
+            value={reason}
+            onChangeText={setReason}
+            onFocus={() => scrollRef.current.scrollToEnd({animated: true})}
+          />
 
-            {/* <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          {/* <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
               <Text style={{ fontSize: 18, fontWeight: 'bold' }}>User Email:</Text>
               <Text style={{ fontSize: 16, color: 'blue' }}>{empEmail || 'Loading...'}</Text>
             </View> */}
 
-            {/* Apply Button */}
-            <TouchableOpacity
-              style={styles.applyButton}
-              onPress={() => {
-                if (!isConnected) {
-                  Alert.alert(
-                    'No Internet Connection',
-                    'Your internet is off. Please turn it on to continue.',
-                  );
-                } else {
-                  handleApply();
-                }
-              }}>
-              <Text style={styles.applyButtonText}>Apply</Text>
-            </TouchableOpacity>
-          </View>
-        </KeyboardAwareScrollView>
-      </ImageBackground>
+          {/* Apply Button */}
+          <TouchableOpacity
+            style={styles.applyButton}
+            onPress={() => {
+              if (!isConnected) {
+                Alert.alert(
+                  'No Internet Connection',
+                  'Your internet is off. Please turn it on to continue.',
+                );
+              } else {
+                handleApply();
+              }
+            }}>
+            <Text style={styles.applyButtonText}>Apply</Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAwareScrollView>
+      {/* </ImageBackground> */}
       {/* Summary Modal */}
       <Modal visible={showSummary} transparent animationType="slide">
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <Text style={styles.summaryTitle}>Leave Application Details</Text>
 
-            <Text>
-              Application Date: {leaveSummary?.applicationdate || '-'}
-            </Text>
-            <Text>Leave Type: {leaveSummary?.leavetype || '-'}</Text>
-            <Text>Duration: {leaveSummary?.duration || '-'}</Text>
-            <Text>Start Date: {leaveSummary?.leavestartdate || '-'}</Text>
-            <Text>End Date: {leaveSummary?.leaveenddate || '-'}</Text>
-            <Text>No. of Days: {leaveSummary?.noofdays || '-'}</Text>
-            <Text>Reason: {leaveSummary?.leavereason || '-'}</Text>
-            <Text>Prefix Date: {leaveSummary?.prefixfromdate || '-'}</Text>
-            <Text>Suffix Date: {leaveSummary?.sufixtodate || '-'}</Text>
+            <Text>Leave Type: {leaveSummary?.LeaveTypeName || '-'}</Text>
 
-            {/* Buttons */}
+            <Text>Duration: {leaveSummary?.LeaveDuration || '-'}</Text>
+
+            <Text>
+              From Date: {leaveSummary?.fromdate?.split('T')[0] || '-'}
+            </Text>
+
+            <Text>To Date: {leaveSummary?.todate?.split('T')[0] || '-'}</Text>
+
+            <Text>No. of Days: {leaveSummary?.TotalleaveApplied || '-'}</Text>
+
+            <Text>Reason: {leaveSummary?.Reason || '-'}</Text>
+
+            <Text>
+              Extra Sandwich Days: {leaveSummary?.ExtraSandwichDays || 0}
+            </Text>
+
+            <Text>Applicant: {leaveSummary?.ApplicantName || '-'}</Text>
+
+            <Text>Manager: {leaveSummary?.ManagerName || '-'}</Text>
+
+            <Text>Manager Email: {leaveSummary?.ManagerEmail || '-'}</Text>
+
             <View style={styles.buttonRow}>
               <TouchableOpacity
+                disabled={isSaving}
                 style={styles.saveButton}
-                onPress={() => {
-                  handleSave();
-                  // handleSaveCrm();
-                }}>
+                onPress={() => handleSave()}>
                 <Text style={styles.buttonText}>Save</Text>
               </TouchableOpacity>
+
               <TouchableOpacity
                 style={styles.cancelButton}
                 onPress={() => setShowSummary(false)}>
@@ -1001,7 +1348,6 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 8,
     justifyContent: 'space-between',
-
     backgroundColor: '#005696',
   },
   headerTitle: {
