@@ -1,0 +1,1037 @@
+import {
+  View,
+  Text,
+  ScrollView,
+  ImageBackground,
+  Dimensions,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  BackHandler,
+  StatusBar,
+} from 'react-native';
+import React, {useEffect, useState,useRef, useCallback} from 'react';
+import {openDatabase} from 'react-native-sqlite-storage';
+import {Dropdown} from 'react-native-element-dropdown';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {TextInput} from 'react-native-paper';
+import CRMImg from '../images/CRMNEW.svg';
+import CustomButton from '../components/custom/CustomButton';
+import Geolocation from '@react-native-community/geolocation';
+import {
+  isLocationEnabled,
+  promptForEnableLocationIfNeeded,
+} from 'react-native-android-location-enabler';
+import {BASE_URL} from '@env';
+import NetInfo from '@react-native-community/netinfo';
+import moment from 'moment';
+import DeviceInfo from 'react-native-device-info';
+import axios from 'axios';
+import {useFocusEffect} from '@react-navigation/native';
+import KeyboardAwareLayout from '../components/custom/KeyboardAwareLayout';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import {showLocalNotification} from '../services/notifications';
+import DateTimePickerModal from 'react-native-modal-datetime-picker';
+
+//database connection
+const db = openDatabase(
+  {
+    name: 'CRM_db',
+    location: 'default',
+  },
+  () => {
+    //console.log('Database connected!');
+  }, //on success
+  error => console.log('Database error', error), //on error
+);
+const StayScreen = ({navigation}) => {
+  const [useBusinessID, setBusinessID] = useState('');
+  const [empEmail, setEmpEmail] = useState('');
+  const [useIDEmployee, setIDEmployee] = useState('');
+  const [useMobileAccess, setuseMobileAccess] = useState('');
+  const [isFocus, setIsFocus] = useState(false);
+  const [selectedAreaData, setSelectedAreaData] = useState([]);
+  const [selectedMAreaData, setSelectedMAreaData] = useState([]);
+  const [areaLabel, setareaLabel] = useState('');
+  const [areaValue, setareaValue] = useState('');
+  const [useRemarks, setRemarks] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+    const saveInProgress = useRef(false);
+  const [locationStatus, setLocationStatus] = useState('');
+  const [currentLongitude, setCurrentLongitude] = useState('0.00');
+  const [currentLatitude, setCurrentLatitude] = useState('0.00');
+  const [currDate, setcurrDate] = useState('');
+  const [useDevice, setDevice] = useState('');
+  const [useManagerAccess, setuseManagerAccess] = useState('');
+  const [username, setUsername] = useState('');
+  const [empPassword, setusePassword] = useState('');
+  const [useManagerToken, setuseManagerToken] = useState('');
+  const [accessToken, setAccessToken] = useState('');
+  const [allowBackdatedEntry, setAllowBackdatedEntry] = useState(false);
+  const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
+  const [cdate, setcurDate] = useState('');
+
+  var date = new Date().getDate(); //Current Date
+  var month = new Date().getMonth() + 1; //Current Month
+  var year = new Date().getFullYear(); //Current Year
+  //var cdate = moment().format('D/MMM/YYYY');
+
+  useEffect(() => {
+    // var date = moment().utcOffset('+05:30').format('YYYY-MM-DD hh:mm:ss A');
+    // console.warn(date);
+    getOneTimeLocation();
+    handleEnabledPressed();
+    var currDate = moment().format('D/MMM/YYYY');
+    setcurDate(currDate);
+    getData();
+
+    DeviceInfo.getDeviceName().then(deviceName => {
+      setDevice(deviceName);
+    });
+
+    setcurrDate(date + '/' + month + '/' + year);
+    const interval = setInterval(() => {
+      handleCheckPressed();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        navigation.navigate('AppNavDCRScreen'); // <-- Your main screen
+        return true; // prevent default back behavior
+      };
+
+      BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () =>
+        BackHandler.removeEventListener('hardwareBackPress', onBackPress);
+    }, [navigation]),
+  );
+
+  const getData = () => {
+    try {
+      AsyncStorage.getItem('UserData').then(value => {
+        if (value != null) {
+          let user = JSON.parse(value);
+          setIDEmployee(user.IDEmployee);
+          setEmpEmail(user.Empemail);
+          setBusinessID(user.BusinessID);
+          setuseMobileAccess(user.MobileAccess);
+          setuseManagerAccess(user.ManagerAccess);
+          setUsername(user.Empname);
+          setusePassword(user.Password);
+          setuseManagerToken(user.ManagerToken);
+          //startDocDCR(user.BusinessID, user.IDEmployee);
+
+          NetInfo.fetch().then(async state => {
+            if (state.isConnected) {
+              try {
+                const response = await fetch(
+                  BASE_URL +
+                    'Configuration/ConfigurationDetail?Businessid=' +
+                    user.BusinessID,
+                );
+
+                const json = await response.json();
+
+                // API returns array
+                if (json.length > 0) {
+                  setAllowBackdatedEntry(json[0].CKBAllowBackdatedEntryInDcr);
+                }
+              } catch (error) {
+                console.log(error);
+              }
+              const aturl =
+                BASE_URL +
+                'Employee/EmpAreaList?Businessid=' +
+                user.BusinessID +
+                '&IDHQ=' +
+                user.IDHQ;
+              //console.log('aturl ' + aturl);
+              var config = {
+                method: 'get',
+                url: aturl,
+              };
+              axios(config)
+                .then(function (response) {
+                  var count = Object.keys(response.data).length;
+                  let wtNameArray = [];
+                  for (var i = 0; i < count; i++) {
+                    wtNameArray.push({
+                      //value: response.data[i].Value,
+                      value: response.data[i].IDArea,
+                      label: response.data[i].Name,
+                    });
+                  }
+                  setSelectedAreaData(wtNameArray);
+                })
+                .catch(function (error) {
+                  Alert.alert(error);
+                });
+
+              const maturl =
+                BASE_URL +
+                'Manager/Area/List?Businessid=' +
+                user.BusinessID +
+                '&IDManager=' +
+                user.IDEmployee;
+              //console.log('aturl ' + maturl);
+              var config = {
+                method: 'get',
+                url: maturl,
+              };
+              axios(config)
+                .then(function (response) {
+                  var count = Object.keys(response.data).length;
+                  let wtNameArray = [];
+                  for (var i = 0; i < count; i++) {
+                    wtNameArray.push({
+                      //value: response.data[i].Value,
+                      value: response.data[i].IDArea,
+                      label: response.data[i].Name,
+                    });
+                  }
+                  setSelectedMAreaData(wtNameArray);
+                })
+                .catch(function (error) {
+                  Alert.alert(error);
+                });
+            } else {
+              fetchOfflineTableData();
+            }
+          }, []);
+        }
+      });
+    } catch (error) {
+      Alert.alert(error);
+    }
+  };
+
+  const handleCheckPressed = async () => {
+    if (Platform.OS === 'android') {
+      var checkEnabled = await isLocationEnabled();
+      //console.log('checkEnabled', checkEnabled);
+      if (checkEnabled === false) {
+        Alert.alert('GPS Not Active');
+        BackHandler.exitApp();
+        navigation.navigate('AppNavScreen');
+      } else if (checkEnabled === true) {
+        //xAlert.alert('GPS Active');
+        //getOneTimeLocation();
+        getMultipleTimeLocation();
+      }
+    }
+  };
+
+  const handleEnabledPressed = async () => {
+    if (Platform.OS === 'android') {
+      try {
+        var enableResult = await promptForEnableLocationIfNeeded();
+        //console.log('enableResult', enableResult);
+      } catch (error) {
+        if (error instanceof Error) {
+          Alert.alert(error.message);
+        }
+      }
+    }
+  };
+
+  const getOneTimeLocation = () => {
+    setLocationStatus('Getting Location ...');
+    Geolocation.getCurrentPosition(
+      //Will give you the current location
+      position => {
+        setLocationStatus('You are Here');
+        // const currentLongitude = JSON.stringify(position.coords.longitude);
+        // //getting the Longitude from the location json
+        // const currentLatitude = JSON.stringify(position.coords.latitude);
+        const lat = position.coords.latitude;
+        const long = position.coords.longitude;
+
+        // Round to 6 decimal places for consistency
+        const currentLatitude = lat.toFixed(6); // "22.507298"
+        const currentLongitude = long.toFixed(6); // "88.336675"
+        //getting the Latitude from the location json
+        setCurrentLongitude(currentLongitude);
+        //Setting state Longitude to re re-render the Longitude Text
+        setCurrentLatitude(currentLatitude);
+        //Setting state Latitude to re re-render the Longitude Text
+        //console.log('checkEnabled', currentLatitude + ' ' + currentLongitude);
+      },
+      error => {
+        setLocationStatus(error.message);
+      },
+      //{enableHighAccuracy: false, timeout: 30000, maximumAge: 1000},
+      //{enableHighAccuracy: true, timeout: 15000, maximumAge: 1000},
+      {timeout: 15000}, // 15 seconds timeout
+    );
+  };
+  const getMultipleTimeLocation = () => {
+    setLocationStatus('Getting Location ...');
+    Geolocation.getCurrentPosition(
+      //Will give you the current location
+      position => {
+        setLocationStatus('You are Here');
+        // const currentLongitude = JSON.stringify(position.coords.longitude);
+        // //getting the Longitude from the location json
+        // const currentLatitude = JSON.stringify(position.coords.latitude);
+        const lat = position.coords.latitude;
+        const long = position.coords.longitude;
+
+        // Round to 6 decimal places for consistency
+        const currentLatitude = lat.toFixed(6); // "22.507298"
+        const currentLongitude = long.toFixed(6); // "88.336675"
+        //getting the Latitude from the location json
+        setCurrentLongitude(currentLongitude);
+        //Setting state Longitude to re re-render the Longitude Text
+        setCurrentLatitude(currentLatitude);
+        //Setting state Latitude to re re-render the Longitude Text
+        //console.log('checkEnabled', currentLatitude + ' ' + currentLongitude);
+      },
+      error => {
+        setLocationStatus(error.message);
+      },
+      //{enableHighAccuracy: false, timeout: 30000, maximumAge: 1000},
+      {enableHighAccuracy: false, timeout: 10000, maximumAge: 1000},
+      //{ timeout: 15000 } // 15 seconds timeout
+    );
+  };
+
+  const fetchOfflineTableData = () => {
+    db.transaction(tx => {
+      tx.executeSql(
+        `SELECT * FROM CRM_getConfigurationDetail LIMIT 1`,
+        [],
+        (tx, results) => {
+          if (results.rows.length > 0) {
+            const value = results.rows.item(0).BackdatedReason;
+
+            console.log('SQLite Value:', value);
+
+            // 1 = show
+            // 0 = hide
+
+            if (value === 1) {
+              setAllowBackdatedEntry(true);
+            } else {
+              setAllowBackdatedEntry(false);
+            }
+          }
+        },
+      );
+    });
+
+    //Retrieve data from CRM_AreaList
+    db.transaction(tx => {
+      tx.executeSql(
+        'SELECT * FROM CRM_AreaList',
+        [],
+        (tx, results) => {
+          if (results.rows.length > 0) {
+            var temp = [];
+            for (let i = 0; i < results.rows.length; ++i)
+              temp.push({
+                value: results.rows.item(i).IDArea,
+                label: results.rows.item(i).Name,
+              });
+            setSelectedAreaData(temp);
+            console.log('Data is inserted:', temp);
+          } else {
+            console.log('No data found');
+          }
+        },
+        (tx, error) => {
+          console.error('Error checking data', error);
+        },
+      );
+    });
+
+    db.transaction(tx => {
+      tx.executeSql(
+        'SELECT * FROM CRM_MangerAreaList',
+        [],
+        (tx, results) => {
+          if (results.rows.length > 0) {
+            var temp = [];
+            for (let i = 0; i < results.rows.length; ++i)
+              temp.push({
+                value: results.rows.item(i).IDArea,
+                label: results.rows.item(i).Name,
+              });
+            setSelectedMAreaData(temp);
+            console.log('Data is inserted:', temp);
+          } else {
+            console.log('No data found');
+          }
+        },
+        (tx, error) => {
+          console.error('Error checking data', error);
+        },
+      );
+    });
+  };
+
+  const submit = () => {
+    var date = moment().utcOffset('+05:30').format('YYYY-MM-DD hh:mm:ss A');
+    console.warn(date);
+    if (currentLongitude == 0.0 && currentLatitude == 0.0) {
+      Alert.alert(
+        'Invalid Location',
+        'Latitude and Longitude are both 0.00. Closing the app.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              BackHandler.exitApp(); // This will close the app
+              navigation.navigate('AppNavScreen');
+            },
+          },
+        ],
+        {cancelable: false},
+      );
+    } else if (areaValue === '') {
+      Alert.alert('Select Area');
+    } else if (useRemarks === '') {
+      Alert.alert('Type Remarks');
+    } else {
+      //CREATE TABLE for Stay_Table
+      db.transaction(txn => {
+        //txn.executeSql('DROP TABLE IF EXISTS CRM_ManagerStartDay', []);
+        txn.executeSql(
+          'CREATE TABLE IF NOT EXISTS Stay_Table(StayDate VARCHAR)',
+          [],
+        );
+      });
+
+      //SQLITE INSERT Stay_Table
+      let sql = 'INSERT INTO Stay_Table(StayDate) VALUES (?)';
+      let params = [cdate]; //storing user data in an array
+      db.executeSql(sql, params);
+
+      if (useMobileAccess === 'ONLINE') {
+        NetInfo.fetch().then(state => {
+          if (state.isConnected) {
+            try {
+              AsyncStorage.getItem('IDday').then(value => {
+                if (value != null) {
+                  let IDday = JSON.parse(value);
+                  submitStay(IDday, date);
+                }
+              });
+            } catch (error) {
+              Alert.alert(error);
+            }
+          } else {
+            Alert.alert('You are Offline Contact With Administrator!');
+          }
+        }, []);
+      } else if (useMobileAccess === 'ONLINE & OFFLINE') {
+        NetInfo.fetch().then(state => {
+          if (state.isConnected) {
+            try {
+              AsyncStorage.getItem('IDday').then(value => {
+                if (value != null) {
+                  let IDday = JSON.parse(value);
+                  submitStay(IDday, date);
+                }
+              });
+            } catch (error) {
+              Alert.alert(error);
+            }
+          } else {
+            let deviceType = 'MOBILE_SYNC_' + useDevice;
+
+            const data_api = {
+              BusinessID: useBusinessID,
+              IDDay: 0,
+              DCRDate: cdate,
+              DCRDateTime: date,
+              EntryType: deviceType,
+              SyncDatetime: date,
+              UserLat: currentLatitude,
+              UserLong: currentLongitude,
+              IDEmployee: useIDEmployee,
+              IDArea: areaValue,
+              Remarks: useRemarks,
+              User: empEmail,
+            };
+            //console.log(data_api);
+ if (saveInProgress.current) {
+      return;
+    }
+
+    saveInProgress.current = true;
+    setIsSaving(true);
+try{
+            db.transaction(tx => {
+              tx.executeSql(
+                'CREATE TABLE IF NOT EXISTS CRM_StayDataSave (id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT);',
+                [],
+                (_, result) => {
+                  console.log('Table created successfully:', result);
+                },
+                (_, error) => {
+                  Alert.alert('Error creating table:', error);
+                },
+              );
+            });
+
+            db.transaction(tx => {
+              tx.executeSql(
+                'INSERT INTO CRM_StayDataSave (data) VALUES (?);',
+                [JSON.stringify(data_api)],
+                (_, result) => {
+                  console.log('Data inserted successfully:', result);
+                  showLocalNotification(
+                    `Hi ${username}`,
+                    `Successfully Submit Stay Dcr \nDate & Time: ${
+                      date || 'N/A'
+                    }.`,
+                  );
+                  // navigation.navigate('AppNavDCRScreen');
+                  Alert.alert(
+                    'Success',
+                    'Record Successfully Saved Locally.',
+                    [
+                      {
+                        text: 'Ok',
+                        //onPress: () => navigation.navigate('Report DashBoard'),
+                        onPress: () => navigation.navigate('AppNavDCRScreen'),
+                      },
+                    ],
+                    {cancelable: false},
+                  );
+                },
+                (_, error) => {
+                  console.log('Error inserting data:', error);
+                },
+              );
+            });
+          }
+          catch (error) {
+            console.error('Error during save operation:', error);
+            Alert.alert('Error', 'An error occurred while saving the record. Please try again.');
+          }
+          finally {
+            saveInProgress.current = false;
+            setIsSaving(false);
+          }
+          }
+        }, []);
+      } else {
+        Alert.alert('Contact With Administrator!');
+        //Alert.alert(useMobileAccess);
+      }
+    }
+  };
+
+  const submitStay = async (IDday, date) => {
+    let deviceType = 'ONLINE_MOBILE_' + useDevice;
+    const data_api = {
+      BusinessID: useBusinessID,
+      IDDay: IDday,
+      DCRDate: cdate,
+      DCRDateTime: date,
+      EntryType: deviceType,
+      SyncDatetime: date,
+      UserLat: currentLatitude,
+      UserLong: currentLongitude,
+      IDEmployee: useIDEmployee,
+      IDArea: areaValue,
+      Remarks: useRemarks,
+      User: empEmail,
+    };
+    //console.log(data_api);
+ if (saveInProgress.current) {
+      return;
+    }
+
+    saveInProgress.current = true;
+    setIsSaving(true);
+try{
+    let result = await fetch(BASE_URL + 'DCR/Stay', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data_api),
+    });
+    result = await result.json();
+    //console.log(result.result);
+    if (result.result === '') {
+      showLocalNotification(
+        `Hi ${username}`,
+        `Successfully Submit Stay Dcr \nDate & Time: ${date || 'N/A'}.`,
+      );
+      const token = await getAccessToken(); // get Bearer token
+      const messageTitle = 'New Stay DCR Submitted by ' + username;
+      const messageBody = `Employee ${username} Successfully Submit the Stay Dcr \nDate & Time: ${
+        date || 'N/A'
+      }.`;
+      await sendNotificationToManager(
+        useManagerToken,
+        messageTitle,
+        messageBody,
+        token,
+      );
+
+      Alert.alert(
+        'Success',
+        'Record Successfully Saved',
+        [
+          {
+            text: 'Ok',
+            //onPress: () => navigation.navigate('Report DashBoard'),
+            onPress: () => navigation.navigate('AppNavDCRScreen'),
+          },
+        ],
+        {cancelable: false},
+      );
+    } else {
+      Alert.alert(`${result.result}`);
+      navigation.navigate('AppNavDCRScreen');
+    }
+  }
+  catch (error) {
+    console.error('Error during submitStay operation:', error);
+    Alert.alert('Error', 'An error occurred while submitting the record. Please try again.');
+  }
+  finally {
+    saveInProgress.current = false;
+    setIsSaving(false);
+  }
+  };
+
+  const getAccessToken = async () => {
+    try {
+      const response = await fetch(`${BASE_URL}Authentication/Generatetoken`, {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        console.error('Token request failed:', response.status);
+        return null;
+      }
+
+      const data = await response.json();
+
+      if (data && data.Token) {
+        console.log('Access Token:', data.Token);
+
+        // Optionally store in AsyncStorage or state
+        // await AsyncStorage.setItem('AccessToken', data.Token);
+        setAccessToken(data.Token);
+
+        return data.Token;
+      } else {
+        console.warn('No token returned from API');
+        return null;
+      }
+    } catch (error) {
+      console.error('Error fetching access token:', error);
+      return null;
+    }
+  };
+
+  const sendNotificationToManager = async (
+    managerToken,
+    title,
+    body,
+    accessToken,
+  ) => {
+    if (!managerToken || managerToken.trim() === '') {
+      console.warn(
+        '⚠️ No manager FCM token available — skipping notification.',
+      );
+      return;
+    }
+    try {
+      const url =
+        'https://fcm.googleapis.com/v1/projects/iecrmnotificationapp-5ed0c/messages:send';
+
+      const message = {
+        message: {
+          token: managerToken,
+          notification: {title, body},
+        },
+      };
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(message),
+      });
+
+      if (response.ok) {
+        console.log('✅ Notification sent successfully');
+        return;
+      }
+
+      // Parse FCM error response
+      let err;
+      try {
+        err = await response.json();
+      } catch {
+        console.warn('⚠️ FCM error not JSON');
+        return;
+      }
+
+      console.warn('❌ Notification failed:', JSON.stringify(err, null, 2));
+
+      const isUnregistered = err?.error?.details?.some(
+        d => d.errorCode === 'UNREGISTERED',
+      );
+
+      if (isUnregistered) {
+        console.log('⚠️ Manager token invalid — attempting refresh.');
+        await regenerateManagerTokenLocal(managerToken);
+      }
+    } catch (error) {
+      console.error('Error sending notification:', error);
+    }
+  };
+
+  const regenerateManagerTokenLocal = async oldToken => {
+    try {
+      const loginBody = {
+        businessid: useBusinessID,
+        email: empEmail,
+        password: empPassword,
+      };
+
+      const response = await fetch(`${BASE_URL}/login/validlogin`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(loginBody),
+      });
+
+      const data = await response.json();
+
+      if (data?.Success && data?.Token) {
+        const newToken = data.Token.trim();
+        const oldTrimmed = oldToken?.trim();
+
+        if (newToken === oldTrimmed) {
+          console.log('ℹ️ New FCM token same as previous — skipping update.');
+        } else {
+          console.log('✅ New FCM token detected:', newToken);
+          // Update locally only
+          useManagerToken = newToken; // or setManagerToken(newToken);
+        }
+      } else {
+        console.warn('⚠️ Failed to regenerate FCM token.');
+      }
+    } catch (error) {
+      console.error('Error regenerating FCM token:', error);
+    }
+  };
+
+  const showDatePicker = () => {
+    setDatePickerVisibility(true);
+  };
+
+  const hideDatePicker = () => {
+    setDatePickerVisibility(false);
+  };
+
+  const handleDateConfirm = daten => {
+    const formattedDate = moment(daten).format('D/MMM/YYYY').toUpperCase();
+    setcurDate(formattedDate);
+    hideDatePicker();
+  };
+
+  return (
+    <>
+      <StatusBar barStyle="light-content" backgroundColor="#a9ddfaff" />
+      <KeyboardAwareLayout>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{flexGrow: 1}}>
+          <ImageBackground
+            source={require('../images/bg2.png')}
+            style={{flex: 1}}
+            resizeMode="cover">
+            {/* LOCATION CARD */}
+            <View
+              style={{
+                backgroundColor: '#ffffff',
+                margin: 12,
+                padding: 12,
+                borderRadius: 12,
+                shadowColor: '#000',
+                shadowOffset: {width: 0, height: 3},
+                shadowOpacity: 0.2,
+                shadowRadius: 4,
+                elevation: 4,
+              }}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  padding: 10,
+                  borderRadius: 12,
+                  borderWidth: 0.5,
+                  borderColor: '#e0e0e0',
+
+                  // Light 3D effect that works on both iOS + Android
+                  shadowColor: '#000',
+                  shadowOffset: {width: 0, height: 2},
+                  shadowOpacity: 0.15,
+                  shadowRadius: 3,
+                  elevation: 3,
+                }}>
+                <Ionicons
+                  name="location-outline"
+                  size={30}
+                  color="#005696"
+                  style={{marginRight: 12}}
+                />
+
+                <View>
+                  <Text
+                    style={{fontSize: 15, fontWeight: '700', color: '#333'}}>
+                    Latitude: {currentLatitude}
+                  </Text>
+                  <Text
+                    style={{fontSize: 15, fontWeight: '700', color: '#333'}}>
+                    Longitude: {currentLongitude}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* FORM */}
+            <View style={{paddingHorizontal: 15, marginTop: 10}}>
+              <Text
+                style={{
+                  fontSize: 16,
+                  fontWeight: '700',
+                  marginBottom: 8,
+                  color: '#000',
+                }}>
+                Enter Details
+              </Text>
+              {allowBackdatedEntry && (
+                <View>
+                  <TouchableOpacity
+                    style={{
+                      width: '100%',
+                      alignSelf: 'center',
+                      justifyContent: 'center',
+                      marginBottom: 10,
+                      marginTop: 5,
+                    }}
+                    activeOpacity={0.8}
+                    onPress={showDatePicker}>
+                    <View pointerEvents="none">
+                      <TextInput
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        placeholder="DCR Date"
+                        placeholderTextColor="#555"
+                        value={cdate}
+                        editable={false}
+                        style={{
+                          borderWidth: 1,
+                          borderColor: '#000',
+                          marginHorizontal: 10,
+                          fontSize: 16,
+                          height: 50,
+                          paddingHorizontal: 12,
+                          borderRadius: 5,
+                          color: '#000',
+                          backgroundColor: '#fff',
+                        }}
+                      />
+                    </View>
+                  </TouchableOpacity>
+                  <DateTimePickerModal
+                    isVisible={isDatePickerVisible}
+                    mode="date"
+                    onConfirm={handleDateConfirm}
+                    onCancel={hideDatePicker}
+                    minimumDate={moment().startOf('month').toDate()}
+                    maximumDate={new Date()}
+                    presentationStyle="overFullScreen"
+                  />
+                </View>
+              )}
+
+              <Dropdown
+                style={[style.dropdown, isFocus && {borderColor: 'blue'}]}
+                placeholderStyle={style.placeholderStyle}
+                selectedTextStyle={style.selectedTextStyle}
+                inputSearchStyle={style.inputSearchStyle}
+                iconStyle={style.iconStyle}
+                data={useManagerAccess ? selectedMAreaData : selectedAreaData}
+                search
+                maxHeight={300}
+                labelField="label"
+                valueField="value"
+                placeholder={isFocus ? '...' : 'Select Area'}
+                searchPlaceholder="Search..."
+                onFocus={() => setIsFocus(true)}
+                onBlur={() => setIsFocus(false)}
+                onChange={item => {
+                  setareaValue(item.value);
+                  setareaLabel(item.label);
+                  setIsFocus(false);
+                }}
+              />
+
+              <TextInput
+                label="Remarks"
+                mode="outlined"
+                multiline
+                numberOfLines={4}
+                value={useRemarks}
+                onChangeText={setRemarks}
+                style={{marginTop: 12}}
+              />
+
+              <View style={{marginTop: 20}}>
+                <CustomButton label="Submit" disabled={isSaving} onPress={submit} />
+              </View>
+            </View>
+          </ImageBackground>
+        </ScrollView>
+      </KeyboardAwareLayout>
+    </>
+  );
+};
+
+export default StayScreen;
+const style = StyleSheet.create({
+  boldText: {
+    fontSize: 24,
+    color: 'red',
+    marginVertical: 10,
+  },
+  dropdown: {
+    height: 50,
+    borderColor: 'gray',
+    borderWidth: 0.5,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    backgroundColor: '#fff',
+    //marginBottom: 10,
+    //marginTop: 5,
+  },
+  dropdownStage: {
+    height: 50,
+    width: '40%',
+    borderColor: 'gray',
+    borderWidth: 0.5,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    backgroundColor: '#fff',
+    //marginBottom: 10,
+    margin: 5,
+  },
+  cStage: {
+    height: 45,
+    width: '35%',
+    borderColor: 'gray',
+    // borderWidth: 0.5,
+    borderRadius: 8,
+    //paddingHorizontal: 5,
+    backgroundColor: '#fff',
+    marginBottom: 5,
+    // margin: 5,
+  },
+  menu: {
+    marginBottom: 10,
+    marginLeft: 5,
+    marginRight: 5,
+    marginTop: 5,
+    padding: 5,
+    //width: 140,
+    //height: 135,
+    elevation: 5,
+    borderRadius: 5,
+  },
+  placeholderStyle: {
+    fontSize: 16,
+  },
+  selectedTextStyle: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+  },
+  iconStyle: {
+    width: 20,
+    height: 20,
+  },
+  inputSearchStyle: {
+    height: 40,
+    fontSize: 16,
+  },
+  container: {
+    marginTop: 10,
+    paddingHorizontal: 10,
+    justifyContent: 'center',
+  },
+  btnTab: {
+    width: Dimensions.get('window').width / 1.5,
+    flexDirection: 'row',
+    borderWidth: 0.5,
+    borderColor: '#EBEBEB',
+    padding: 10,
+    //justifyContent: 'center',
+    backgroundColor: '#E6838D',
+    marginTop: 5,
+    marginBottom: 5,
+  },
+  btnTabE: {
+    width: Dimensions.get('window').width / 1.5,
+    flexDirection: 'row',
+    borderWidth: 0.5,
+    borderColor: '#EBEBEB',
+    padding: 10,
+    //justifyContent: 'center',
+    backgroundColor: '#E6838D',
+    marginTop: 10,
+    marginBottom: 5,
+  },
+  textTab: {
+    fontSize: 16,
+    color: '#fff',
+    fontFamily: 'Lato-Bold',
+  },
+  menuItem: {
+    fontSize: 14,
+    fontFamily: 'Lato-Regular',
+    color: '#000',
+    margin: 5,
+    padding: 5,
+    textAlignVertical: 'center',
+    textAlign: 'center',
+    alignItems: 'center', // Centered horizontally
+  },
+  menuItemPS: {
+    fontSize: 16,
+    fontFamily: 'Lato-Regular',
+    color: '#000',
+    margin: 2,
+    marginBottom: 4,
+    //padding: 5,
+    textAlignVertical: 'center',
+    textAlign: 'center',
+    alignItems: 'center', // Centered horizontally
+  },
+  wrapper: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignContent: 'center',
+    marginTop: 2,
+    paddingTop: 2,
+  },
+});

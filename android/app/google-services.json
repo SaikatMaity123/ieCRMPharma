@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "325082449545",
+    "project_id": "iecrmpharma",
+    "storage_bucket": "iecrmpharma.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:325082449545:android:a3b1b15dfb4e50e014e858",
+        "android_client_info": {
+          "package_name": "com.ieCRMPHARMA"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAEzTLko81x89_xzSFRGbI2JiVf7-v5jtI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
