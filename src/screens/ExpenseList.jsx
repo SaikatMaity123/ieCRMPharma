@@ -138,7 +138,7 @@ const ExpenseList = () => {
                 user.BusinessID +
                 '&IDEmployee=' +
                 user.IDEmployee;
-              //console.log(url);
+              console.log('ExpenseBookingurl', url);
               let result = await fetch(url);
               result = await result.json();
               //console.log('result',result);

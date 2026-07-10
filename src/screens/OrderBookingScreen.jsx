@@ -195,8 +195,9 @@ const OrderBookingScreen = ({navigation}) => {
                   });
               }
               const url =
-                BASE_URL + 'Product/Order/List?Businessid=' + user.BusinessID;
-              //console.log(url);
+                //BASE_URL + 'Product/Order/List?Businessid=' + user.BusinessID;
+                BASE_URL + 'Product/Division/Order/List?Businessid=' + user.BusinessID+'&IDDivision=' + user.IDDivision;
+              console.log('Producturl: ' + url);
               let result = await fetch(url);
               result = await result.json();
               //onsole.log(result);

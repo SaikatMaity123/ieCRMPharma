@@ -1835,7 +1835,7 @@ const DCRDoctorNew = ({navigation}) => {
 
         let result = await fetch(returl);
         result = await result.json();
-        console.log(returl);
+        console.log('doctorWiseProductListAPI',returl);
         setdataProduct(result.d);
       } else {
         if (useManagerAccess === true) {
