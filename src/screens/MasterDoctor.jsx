@@ -284,7 +284,12 @@ const MasterDoctor = ({navigation}) => {
       };
 
       // Convert HEIC/HEIF to JPEG
-      if (asset.type?.includes('heic') || asset.type?.includes('heif')) {
+      //if (asset.type?.includes('heic') || asset.type?.includes('heif')) {
+      if (
+    asset.type?.toLowerCase().includes("heic") ||
+    asset.type?.toLowerCase().includes("heif") ||
+    asset.fileName?.toLowerCase().endsWith(".heic")
+){
         const resized = await ImageResizer.createResizedImage(
           asset.uri,
           1500,
@@ -336,7 +341,12 @@ const MasterDoctor = ({navigation}) => {
     };
 
     // Convert HEIC/HEIF to JPEG
-    if (asset.type?.includes('heic') || asset.type?.includes('heif')) {
+    //if (asset.type?.includes('heic') || asset.type?.includes('heif')) {
+if (
+    asset.type?.toLowerCase().includes("heic") ||
+    asset.type?.toLowerCase().includes("heif") ||
+    asset.fileName?.toLowerCase().endsWith(".heic")
+){
       const resized = await ImageResizer.createResizedImage(
         asset.uri,
         1500,
@@ -2008,7 +2018,7 @@ const MasterDoctor = ({navigation}) => {
           <Text style={{fontWeight: 'bold', marginBottom: 5, fontSize: 16}}>
             Doctor Information
           </Text>
-          <CorporateHospitalCard />
+          {/* <CorporateHospitalCard /> */}
           {showData ? (
             <SafeAreaView>
               <View>

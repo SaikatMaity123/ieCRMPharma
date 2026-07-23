@@ -82,8 +82,8 @@ android {
         applicationId "com.ieCRMPHARMA"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 15
-        versionName "15.0"
+        versionCode 18
+        versionName "18.0"
         // This block is different from the one you use to link Gradle
         // to your CMake or ndk-build script.
 //        externalNativeBuild {
@@ -122,6 +122,25 @@ android {
 //    }
 }
 
+//dependencies {
+//    // The version of react-native is set by the React Native Gradle Plugin
+//    implementation("com.facebook.react:react-android")
+//    implementation project(':react-native-android-location-enabler')
+//    implementation project(':react-native-version-check')
+//    implementation(project(':react-native-maps')) {
+//        exclude group: 'com.google.android.gms'
+//    }
+//    implementation 'com.google.android.gms:play-services-base:18.0.1'
+//    implementation 'com.google.android.gms:play-services-location:19.0.1'
+//    implementation 'com.google.android.gms:play-services-maps:18.0.2'
+//
+//    if (hermesEnabled.toBoolean()) {
+//        implementation("com.facebook.react:hermes-android")
+//    } else {
+//        implementation jscFlavor
+//    }
+//}
+
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
@@ -130,8 +149,10 @@ dependencies {
     implementation(project(':react-native-maps')) {
         exclude group: 'com.google.android.gms'
     }
-    implementation 'com.google.android.gms:play-services-base:18.0.1'
-    implementation 'com.google.android.gms:play-services-location:19.0.1'
+//    implementation 'com.google.android.gms:play-services-base:18.0.1'
+//    implementation 'com.google.android.gms:play-services-location:19.0.1'
+//    implementation 'com.google.android.gms:play-services-maps:18.0.2'
+    implementation 'com.google.android.gms:play-services-location:21.0.1'
     implementation 'com.google.android.gms:play-services-maps:18.0.2'
 
     if (hermesEnabled.toBoolean()) {

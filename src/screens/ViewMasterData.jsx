@@ -206,7 +206,12 @@ const ViewMasterData = () => {
       };
 
       // Convert HEIC/HEIF to JPEG
-      if (asset.type?.includes('heic') || asset.type?.includes('heif')) {
+      //if (asset.type?.includes('heic') || asset.type?.includes('heif')) {
+      if (
+    asset.type?.toLowerCase().includes("heic") ||
+    asset.type?.toLowerCase().includes("heif") ||
+    asset.fileName?.toLowerCase().endsWith(".heic")
+){
         const resized = await ImageResizer.createResizedImage(
           asset.uri,
           1500,
@@ -258,7 +263,12 @@ const ViewMasterData = () => {
     };
 
     // Convert HEIC/HEIF to JPEG
-    if (asset.type?.includes('heic') || asset.type?.includes('heif')) {
+    //if (asset.type?.includes('heic') || asset.type?.includes('heif')) {
+    if (
+    asset.type?.toLowerCase().includes("heic") ||
+    asset.type?.toLowerCase().includes("heif") ||
+    asset.fileName?.toLowerCase().endsWith(".heic")
+){
       const resized = await ImageResizer.createResizedImage(
         asset.uri,
         1500,
@@ -854,7 +864,7 @@ const ViewMasterData = () => {
                                 fontFamily: 'Lato-Bold',
                                 color: '#000',
                               }}>
-                              Dr. {item.Name}
+                              {item.Name}
                             </Text>
                           </View>
                         </View>

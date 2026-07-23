@@ -1898,7 +1898,7 @@ const RetailerDCRScreen = ({navigation}) => {
           useIDEmployee +
           '&IDArea=' +
           IDArea;
-        console.log('returl ' + returl);
+        console.log('returlMSR' + returl);
         var config = {
           method: 'get',
           url: returl,
@@ -1977,7 +1977,7 @@ const RetailerDCRScreen = ({navigation}) => {
           useMultipleIDEmployee +
           '&IDArea=' +
           IDArea;
-        //console.log('returl ' + returl);
+        console.log('returlManager' + returl);
         var config = {
           method: 'get',
           url: returl,

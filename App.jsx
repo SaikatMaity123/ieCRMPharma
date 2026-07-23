@@ -47,8 +47,6 @@ import SpInAppUpdates, {
   StartUpdateOptions,
   IAUInstallStatus,
 } from 'sp-react-native-in-app-updates';
-import RCPA from './src/screens/RCPA';
-//import RCPANEW from './src/screens/RCPANEW';
 import RCPAN from './src/screens/RCPAN';
 import ActivityDashBoard from './src/screens/ActivityDashBoard';
 import DoctorActivities from './src/screens/DoctorActivities';
@@ -109,7 +107,6 @@ import ViewRCPAScreen from './src/screens/ViewRCPAScreen';
 import Register from './src/screens/Register';
 //import LogInNew from './src/screens/LogInNew';
 
-import Splash from './src/screens/Splash';
 import Splashscreen from './src/screens/Splashscreen';
 
 console.log('NativeModules:', Object.keys(NativeModules));
@@ -901,8 +898,8 @@ const App = () => {
               ),
             })}
             name="Doctor Daily Call Report"
-            //component={DCRDoctor}
-            component={DCRDoctorNew}
+            component={DCRDoctor}
+            //component={DCRDoctorNew}
           />
           <Stack.Screen
             // options={{

@@ -135,7 +135,7 @@ const StartDCRScreen = ({navigation}) => {
                   user.BusinessID +
                   '&IDEmployee=' +
                   user.IDEmployee;
-                console.log(empurl);
+                console.log('ManagerVisitwithList ',empurl);
                 var config = {
                   method: 'get',
                   url: empurl,
@@ -157,7 +157,7 @@ const StartDCRScreen = ({navigation}) => {
                     setvisitMVWTDataSelected(wtNameArray);
                   })
                   .catch(function (error) {
-                    Alert.alert(error);
+                    console.log('ManagerVisitwithList Error:', error.message);
                   });
               } else {
                 // const vwturl =
@@ -618,6 +618,8 @@ const StartDCRScreen = ({navigation}) => {
           useBusinessID +
           '&Employees=' +
           IDEmployeeList;
+
+          console.log('mvwtAreaListAPI ',areaurl);
         var config = {
           method: 'get',
           url: areaurl,
@@ -1867,7 +1869,7 @@ const StartDCRScreen = ({navigation}) => {
                 selectedTextStyle={style.selectedTextStyle}
                 inputSearchStyle={style.inputSearchStyle}
                 iconStyle={style.iconStyle}
-                data={usevisitMVWTDataSelected}
+                data={ usevisitMVWTDataSelected}
                 search
                 maxHeight={300}
                 labelField="label"

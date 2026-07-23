@@ -2330,7 +2330,7 @@ const CustomExpense = props => {
                 fontFamily: 'Roboto-Regular',
                 marginRight: 5,
               }}>
-              Version 1.1
+              Version 1.3
             </Text>
           </View>
         </View>

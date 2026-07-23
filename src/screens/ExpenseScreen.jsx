@@ -327,7 +327,12 @@ const ExpenseScreen = ({navigation}) => {
       // ✅ Convert HEIC/HEIF to JPG
       if (
         Platform.OS === 'ios' &&
-        (asset.type?.includes('heic') || asset.type?.includes('heif'))
+        //(asset.type?.includes('heic') || asset.type?.includes('heif'))
+         (
+    asset.type?.toLowerCase().includes("heic") ||
+    asset.type?.toLowerCase().includes("heif") ||
+    asset.fileName?.toLowerCase().endsWith(".heic")
+)
       ) {
         const resized = await ImageResizer.createResizedImage(
           asset.uri,
@@ -340,7 +345,7 @@ const ExpenseScreen = ({navigation}) => {
         imageUri = resized.uri;
         imageType = 'image/jpeg';
         imageName = asset.fileName
-          ? asset.fileName.replace(/\.(heic|heif)$/i, '.jpg')
+          ? asset.fileName.replace(/\.(heic|heif|.heic|.heif)$/i, '.jpg')
           : `image_${Date.now()}.jpg`;
       }
 
@@ -383,7 +388,12 @@ const ExpenseScreen = ({navigation}) => {
     // ✅ Convert HEIC/HEIF to JPG
     if (
       Platform.OS === 'ios' &&
-      (asset.type?.includes('heic') || asset.type?.includes('heif'))
+      //(asset.type?.includes('heic') || asset.type?.includes('heif'))
+       (
+    asset.type?.toLowerCase().includes("heic") ||
+    asset.type?.toLowerCase().includes("heif") ||
+    asset.fileName?.toLowerCase().endsWith(".heic")
+)
     ) {
       const resized = await ImageResizer.createResizedImage(
         asset.uri,
@@ -396,7 +406,7 @@ const ExpenseScreen = ({navigation}) => {
       imageUri = resized.uri;
       imageType = 'image/jpeg';
       imageName = asset.fileName
-        ? asset.fileName.replace(/\.(heic|heif)$/i, '.jpg')
+        ? asset.fileName.replace(/\.(heic|heif|.heic|.heif)$/i, '.jpg')
         : `image_${Date.now()}.jpg`;
     }
 

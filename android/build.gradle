@@ -1,3 +1,33 @@
+//buildscript {
+//    ext {
+//        buildToolsVersion = "35.0.0"
+//        minSdkVersion = 23
+//        compileSdkVersion = 35
+//        targetSdkVersion = 35
+//        ndkVersion = "26.1.10909125"
+//        kotlinVersion = "1.9.22"
+//    }
+//    repositories {
+//        google()
+//        mavenCentral()
+//    }
+//    dependencies {
+//        classpath("com.android.tools.build:gradle")
+//        classpath("com.facebook.react:react-native-gradle-plugin")
+//        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
+//        classpath ("com.google.gms:google-services:4.4.3")
+//    }
+//
+//    project.ext.react = [
+//    nodeExecutableAndArgs: ["/usr/local/bin/node"]
+//]
+//
+//}
+//
+//apply plugin: "com.facebook.react.rootproject"
+
+
+
 buildscript {
     ext {
         buildToolsVersion = "35.0.0"
@@ -18,10 +48,21 @@ buildscript {
         classpath ("com.google.gms:google-services:4.4.3")
     }
 
+    subprojects {
+        configurations.all {
+            resolutionStrategy {
+                force 'com.google.android.gms:play-services-location:21.0.1'
+                force 'com.google.android.gms:play-services-base:18.2.0'
+                force 'com.google.android.gms:play-services-basement:18.2.0'
+                force 'com.google.android.gms:play-services-tasks:18.0.2'
+            }
+        }
+    }
     project.ext.react = [
-    nodeExecutableAndArgs: ["/usr/local/bin/node"]
-]
+            nodeExecutableAndArgs: ["/usr/local/bin/node"]
+    ]
 
 }
 
 apply plugin: "com.facebook.react.rootproject"
+
