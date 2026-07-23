@@ -1,9 +1,9 @@
-import {View, Text, SafeAreaView, StyleSheet, Button} from 'react-native';
-import React, {useEffect, useState} from 'react';
+import { View, Text, SafeAreaView, StyleSheet, Button } from 'react-native';
+import React, { useEffect, useState } from 'react';
 import CRMImg from '../images/CRMNEW.svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const LogoutScreen = ({navigation}) => {
+const LogoutScreen = ({ navigation }) => {
   const [modalVisible, setModalVisible] = useState(false);
 
   const onCancel = () => {
@@ -11,13 +11,37 @@ const LogoutScreen = ({navigation}) => {
     setModalVisible(false);
   };
 
+  // const onLogout = async () => {
+  //   try {
+  //     await AsyncStorage.clear();
+  //     navigation.navigate('LogIn');
+  //     setModalVisible(false);
+  //   } catch (error) {
+  //     console.log(error);
+  //   }
+  // };
+
   const onLogout = async () => {
     try {
+      // Get GUID before clearing storage
+      const guid = await AsyncStorage.getItem('GUID');
+      const bid = await AsyncStorage.getItem('BUSINESS_ID');
+
+      // Clear all AsyncStorage
       await AsyncStorage.clear();
-      navigation.navigate('LogIn');
+
+      // Restore GUID
+      if (guid) {
+        await AsyncStorage.setItem('GUID', guid);
+      }
+      if (bid) {
+        await AsyncStorage.setItem('BUSINESS_ID', bid);
+      }
+
       setModalVisible(false);
+      navigation.navigate('LogIn');
     } catch (error) {
-      console.log(error);
+      console.log('Logout Error:', error);
     }
   };
 
@@ -41,7 +65,7 @@ const LogoutScreen = ({navigation}) => {
     </View> */}
 
       {modalVisible ? (
-        <View style={[styles.modal, {backgroundColor: '#ecf0f1'}]}>
+        <View style={[styles.modal, { backgroundColor: '#ecf0f1' }]}>
           <View style={styles.body}>
             {/* <Image
             style={{ width: 100,
@@ -51,15 +75,15 @@ const LogoutScreen = ({navigation}) => {
             <CRMImg
               height={100}
               width={100}
-              // style={{transform: [{rotate: '-5deg'}]}}
+            // style={{transform: [{rotate: '-5deg'}]}}
             />
             <Text>Do You Want To Logout?</Text>
             {/* <Button title="Close" onPress={() => setModalVisible(false)} /> */}
-            <View style={{flexDirection: 'row'}}>
-              <View style={{margin: 5}}>
+            <View style={{ flexDirection: 'row' }}>
+              <View style={{ margin: 5 }}>
                 <Button title="Logout" onPress={() => onLogout()} />
               </View>
-              <View style={{margin: 5}}>
+              <View style={{ margin: 5 }}>
                 <Button title="Close" onPress={() => onCancel()} />
               </View>
             </View>

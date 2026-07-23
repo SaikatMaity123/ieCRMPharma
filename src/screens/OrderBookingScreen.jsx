@@ -17,19 +17,19 @@ import {
   BackHandler,
   StatusBar,
 } from 'react-native';
-import React, {useEffect, useRef, useState, useCallback} from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 //import {TextInput} from 'react-native-paper';
-import {openDatabase} from 'react-native-sqlite-storage';
-import {Dropdown} from 'react-native-element-dropdown';
+import { openDatabase } from 'react-native-sqlite-storage';
+import { Dropdown } from 'react-native-element-dropdown';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
-import {BASE_URL} from '@env';
+import { BASE_URL } from '@env';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import moment from 'moment';
 import axios from 'axios';
-import {useFocusEffect} from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import CRMImg from '../images/CRMNEW.svg';
-import {MultipleSelectList} from 'react-native-dropdown-select-list';
+import { MultipleSelectList } from 'react-native-dropdown-select-list';
 import KeyboardAwareLayout from '../components/custom/KeyboardAwareLayout';
 
 //database connection
@@ -44,7 +44,7 @@ const db = openDatabase(
   error => console.log('Database error', error), //on error
 );
 
-const OrderBookingScreen = ({navigation}) => {
+const OrderBookingScreen = ({ navigation }) => {
   const [useRetDataSelected, setRetDataSelected] = useState([]);
   const [useRetLabel, setRetLabel] = useState('');
   const [useRetValue, setRetValue] = useState('');
@@ -196,7 +196,7 @@ const OrderBookingScreen = ({navigation}) => {
               }
               const url =
                 //BASE_URL + 'Product/Order/List?Businessid=' + user.BusinessID;
-                BASE_URL + 'Product/Division/Order/List?Businessid=' + user.BusinessID+'&IDDivision=' + user.IDDivision;
+                BASE_URL + 'Product/Division/Order/List?Businessid=' + user.BusinessID + '&IDDivision=' + user.IDDivision;
               console.log('Producturl: ' + url);
               let result = await fetch(url);
               result = await result.json();
@@ -461,7 +461,7 @@ const OrderBookingScreen = ({navigation}) => {
                     onPress: () => navigation.navigate('AppNavScreen'),
                   },
                 ],
-                {cancelable: false},
+                { cancelable: false },
               );
             }
             // else if (result.result === errorText) {
@@ -662,44 +662,44 @@ const OrderBookingScreen = ({navigation}) => {
   // };
 
   const addProduct = () => {
-  const parsedQty = parseInt(dataQty, 10);
+    const parsedQty = parseInt(dataQty, 10);
 
-  if (selectedProduct === '') {
-    Alert.alert('Select Sample');
-  } else if (dataQty === '') {
-    Alert.alert('Type Quantity');
-  } else if (!dataQty || parsedQty === 0) {
-    Alert.alert('Data quantity cannot be zero or empty.');
-  } else {
+    if (selectedProduct === '') {
+      Alert.alert('Select Sample');
+    } else if (dataQty === '') {
+      Alert.alert('Type Quantity');
+    } else if (!dataQty || parsedQty === 0) {
+      Alert.alert('Data quantity cannot be zero or empty.');
+    } else {
 
-    // Duplicate check
-    const isDuplicate = productData.some(
-      item => String(item.idproduct) === String(useIDProduct),
-    );
+      // Duplicate check
+      const isDuplicate = productData.some(
+        item => String(item.idproduct) === String(useIDProduct),
+      );
 
-    if (isDuplicate) {
-      Alert.alert('This product has already been added.');
-      return;
+      if (isDuplicate) {
+        Alert.alert('This product has already been added.');
+        return;
+      }
+
+      setModalVisible(false);
+      setDataQty('');
+
+      setproductData([
+        ...productData,
+        {
+          key: dataQty,
+          name: useProdname,
+          packsize: dataPack,
+          purrate: dataRate,
+          mrp: dataMRP,
+          code: useProdcode,
+          idproduct: useIDProduct,
+          amount: dataAmount,
+        },
+      ]);
     }
-
-    setModalVisible(false);
-    setDataQty('');
-
-    setproductData([
-      ...productData,
-      {
-        key: dataQty,
-        name: useProdname,
-        packsize: dataPack,
-        purrate: dataRate,
-        mrp: dataMRP,
-        code: useProdcode,
-        idproduct: useIDProduct,
-        amount: dataAmount,
-      },
-    ]);
-  }
-};
+  };
   const onDeleteProduct = id => {
     // db.transaction(tx => {
     //   tx.executeSql(
@@ -907,7 +907,7 @@ const OrderBookingScreen = ({navigation}) => {
   return (
     <KeyboardAwareLayout>
       <StatusBar backgroundColor="#a9ddfaff" barStyle="light-content" />
-      <View style={{justifyContent: 'center', backgroundColor: '#ffffff'}}>
+      <View style={{ justifyContent: 'center', backgroundColor: '#ffffff' }}>
         {/* <View
         style={{
           backgroundColor: '#ecf0f1',
@@ -923,7 +923,7 @@ const OrderBookingScreen = ({navigation}) => {
 
         {/* </View> */}
 
-        <View style={{padding: 5, margin: 5}}>
+        <View style={{ padding: 5, margin: 5 }}>
           <TextInput
             //label="Date"
             mode="outlined"
@@ -932,14 +932,14 @@ const OrderBookingScreen = ({navigation}) => {
             //style={{marginBottom: 5}}
             value={currDate}
             editable={false}
-            style={[style.textInput, {marginBottom: 5}]}
+            style={[style.textInput, { marginBottom: 5 }]}
             placeholder="Date"
             placeholderTextColor="#555"
           />
           <View>
             {useManagerAccess ? (
               <View>
-                <View style={{marginBottom: 5}}>
+                <View style={{ marginBottom: 5 }}>
                   {/* <MultipleSelectList
                   setSelected={val => setMvisitWTData(val)}
                   data={useMvisitWTDataSelected}
@@ -958,7 +958,7 @@ const OrderBookingScreen = ({navigation}) => {
                   labelStyles={{fontWeight: '800', color: 'black'}}
                 /> */}
                   <Dropdown
-                    style={[style.dropdown, isFocus && {borderColor: 'blue'}]}
+                    style={[style.dropdown, isFocus && { borderColor: 'blue' }]}
                     placeholderStyle={style.placeholderStyle}
                     selectedTextStyle={style.selectedTextStyle}
                     inputSearchStyle={style.inputSearchStyle}
@@ -981,9 +981,9 @@ const OrderBookingScreen = ({navigation}) => {
                     }}
                   />
                 </View>
-                <View style={{marginBottom: 5, paddingBottom: 5}}>
+                <View style={{ marginBottom: 5, paddingBottom: 5 }}>
                   <Dropdown
-                    style={[style.dropdown, isFocus && {borderColor: 'blue'}]}
+                    style={[style.dropdown, isFocus && { borderColor: 'blue' }]}
                     placeholderStyle={style.placeholderStyle}
                     selectedTextStyle={style.selectedTextStyle}
                     inputSearchStyle={style.inputSearchStyle}
@@ -1007,9 +1007,9 @@ const OrderBookingScreen = ({navigation}) => {
                 </View>
               </View>
             ) : (
-              <View style={{marginBottom: 2, paddingBottom: 2}}>
+              <View style={{ marginBottom: 2, paddingBottom: 2 }}>
                 <Dropdown
-                  style={[style.dropdown, isFocus && {borderColor: 'blue'}]}
+                  style={[style.dropdown, isFocus && { borderColor: 'blue' }]}
                   placeholderStyle={style.placeholderStyle}
                   selectedTextStyle={style.selectedTextStyle}
                   inputSearchStyle={style.inputSearchStyle}
@@ -1034,7 +1034,7 @@ const OrderBookingScreen = ({navigation}) => {
             )}
           </View>
           <Dropdown
-            style={[style.dropdown, isFocus && {borderColor: 'blue'}]}
+            style={[style.dropdown, isFocus && { borderColor: 'blue' }]}
             placeholderStyle={style.placeholderStyle}
             selectedTextStyle={style.selectedTextStyle}
             inputSearchStyle={style.inputSearchStyle}
@@ -1062,7 +1062,7 @@ const OrderBookingScreen = ({navigation}) => {
             mode="outlined"
             autoCapitalize="none"
             autoCorrect={false}
-            style={[style.textInput, {marginTop: 10}]}
+            style={[style.textInput, { marginTop: 10 }]}
             placeholder="Remarks"
             multiline={true}
             numberOfLines={3}
@@ -1227,8 +1227,8 @@ const OrderBookingScreen = ({navigation}) => {
           </View>
         </View> */}
 
-        <View style={{justifyContent: 'center', alignItems: 'center'}}>
-          <View style={{flexDirection: 'row'}}>
+        <View style={{ justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row' }}>
             <TouchableOpacity
               style={style.button}
               // style={{
@@ -1242,15 +1242,15 @@ const OrderBookingScreen = ({navigation}) => {
               onPress={() => toggleModal()}>
               <Text
                 style={style.buttonText}
-                // style={{
-                //   textAlign: 'center',
-                //   fontWeight: '700',
-                //   fontSize: 18,
-                //   margin: 5,
-                //   padding: 5,
-                //   fontFamily: 'Lato-Regular',
-                //   color: '#fff',
-                // }}
+              // style={{
+              //   textAlign: 'center',
+              //   fontWeight: '700',
+              //   fontSize: 18,
+              //   margin: 5,
+              //   padding: 5,
+              //   fontFamily: 'Lato-Regular',
+              //   color: '#fff',
+              // }}
               >
                 Add Product
               </Text>
@@ -1270,15 +1270,15 @@ const OrderBookingScreen = ({navigation}) => {
               onPress={() => save()}>
               <Text
                 style={style.buttonText}
-                // style={{
-                //   textAlign: 'center',
-                //   fontWeight: '700',
-                //   fontSize: 18,
-                //   margin: 5,
-                //   padding: 5,
-                //   fontFamily: 'Lato-Regular',
-                //   color: '#fff',
-                // }}
+              // style={{
+              //   textAlign: 'center',
+              //   fontWeight: '700',
+              //   fontSize: 18,
+              //   margin: 5,
+              //   padding: 5,
+              //   fontFamily: 'Lato-Regular',
+              //   color: '#fff',
+              // }}
               >
                 Submit
               </Text>
@@ -1290,7 +1290,7 @@ const OrderBookingScreen = ({navigation}) => {
               transparent={true}
               //visible={visible}
               animationType="fade"
-              //onRequestClose={onClose}
+            //onRequestClose={onClose}
             >
               <View style={style.modalOverlay}>
                 <View style={style.modalContainer}>
@@ -1310,7 +1310,7 @@ const OrderBookingScreen = ({navigation}) => {
                     onPress={() => {
                       setClicked(!clicked);
                     }}>
-                    <Text style={{fontWeight: '600'}}>
+                    <Text style={{ fontWeight: '600' }}>
                       {selectedProduct == ''
                         ? 'Select Product'
                         : selectedProduct}
@@ -1318,12 +1318,12 @@ const OrderBookingScreen = ({navigation}) => {
                     {clicked ? (
                       <Image
                         source={require('../images/upload.png')}
-                        style={{width: 20, height: 20}}
+                        style={{ width: 20, height: 20 }}
                       />
                     ) : (
                       <Image
                         source={require('../images/dropdown.png')}
-                        style={{width: 20, height: 20}}
+                        style={{ width: 20, height: 20 }}
                       />
                     )}
                   </TouchableOpacity>
@@ -1348,7 +1348,7 @@ const OrderBookingScreen = ({navigation}) => {
                       <FlatList
                         //data={dataSample}
                         data={filteredData}
-                        renderItem={({item, index}) => {
+                        renderItem={({ item, index }) => {
                           return (
                             <TouchableOpacity
                               style={{
@@ -1371,7 +1371,7 @@ const OrderBookingScreen = ({navigation}) => {
                                 // onSearch('');
                                 // setSearch('');
                               }}>
-                              <Text style={{fontWeight: '600'}}>
+                              <Text style={{ fontWeight: '600' }}>
                                 {item.Name}
                               </Text>
                             </TouchableOpacity>
@@ -1380,7 +1380,7 @@ const OrderBookingScreen = ({navigation}) => {
                       />
                     </View>
                   ) : null}
-                  <View style={{flexDirection: 'row'}}>
+                  <View style={{ flexDirection: 'row' }}>
                     <TextInput
                       //label="Qty"
                       mode="outlined"
@@ -1427,7 +1427,7 @@ const OrderBookingScreen = ({navigation}) => {
                       placeholderTextColor="#555"
                     />
                   </View>
-                  <View style={{flexDirection: 'row'}}>
+                  <View style={{ flexDirection: 'row' }}>
                     <TouchableOpacity
                       style={{
                         backgroundColor: '#005696',
@@ -1485,114 +1485,184 @@ const OrderBookingScreen = ({navigation}) => {
             </Modal>
           ) : null}
         </View>
-        <View style={{marginLeft: 10, marginRight: 10, marginTop: 5}}>
+        <View style={{ marginLeft: 10, marginRight: 10, marginTop: 5 }}>
           <FlatList
             data={productData}
             keyExtractor={(item, index) => index.toString()}
-            renderItem={({item, index}) => {
+            renderItem={({ item, index }) => {
               return (
-                <TouchableWithoutFeedback>
-                  <View
-                    style={[
-                      style.menu,
-                      {
-                        backgroundColor: '#ecf0f1',
-                        flexDirection: 'row',
-                      },
-                    ]}>
-                    <View
+                // <TouchableWithoutFeedback>
+                //   <View
+                //     style={[
+                //       style.menu,
+                //       {
+                //         backgroundColor: '#ecf0f1',
+                //         flexDirection: 'row',
+                //       },
+                //     ]}>
+                //     <View
+                //       style={{
+                //         alignItems: 'center',
+                //         justifyContent: 'center',
+                //       }}>
+                //       <AntDesign
+                //         name="delete"
+                //         size={30}
+                //         color="red"
+                //         onPress={() => {
+                //           //onDeleteProduct(item.id);
+                //           onDeleteProduct(index);
+                //         }}
+                //       />
+                //     </View>
+                //     <View
+                //       style={{
+                //         alignItems: 'center',
+                //         justifyContent: 'center',
+                //         margin: 5,
+                //       }}>
+                //       <View
+                //         style={{
+                //           flexDirection: 'row',
+                //         }}>
+                //         <Text
+                //           style={{
+                //             fontSize: 12,
+                //             fontFamily: 'Lato-Regular',
+                //             color: '#000',
+                //             margin: 2,
+                //             padding: 2,
+                //             textAlignVertical: 'center',
+                //           }}>
+                //           Name :{' '}
+                //         </Text>
+                //         <Text
+                //           style={{
+                //             fontSize: 14,
+                //             fontFamily: 'Lato-Bold',
+                //             color: '#000',
+                //             width: '80%',
+                //             textAlignVertical: 'center',
+                //           }}>
+                //           {item.name}
+                //         </Text>
+                //       </View>
+                //       <View
+                //         style={{
+                //           flexDirection: 'row',
+                //         }}>
+                //         <Text
+                //           style={{
+                //             fontSize: 12,
+                //             fontFamily: 'Lato-Regular',
+                //             color: '#000',
+                //             margin: 2,
+                //             padding: 2,
+                //             textAlignVertical: 'center',
+                //           }}>
+                //           Qty :{' '}
+                //         </Text>
+                //         <Text
+                //           style={{
+                //             fontSize: 14,
+                //             fontFamily: 'Lato-Bold',
+                //             color: '#000',
+                //             textAlignVertical: 'center',
+                //           }}>
+                //           {item.key}
+                //         </Text>
+                //         <Text
+                //           style={{
+                //             fontSize: 12,
+                //             fontFamily: 'Lato-Regular',
+                //             color: '#000',
+                //             margin: 2,
+                //             padding: 2,
+                //             textAlignVertical: 'center',
+                //           }}>
+                //           Amount :{' '}
+                //         </Text>
+                //         <Text
+                //           style={{
+                //             fontSize: 14,
+                //             fontFamily: 'Lato-Bold',
+                //             color: '#000',
+                //             textAlignVertical: 'center',
+                //           }}>
+                //           {item.amount}
+                //         </Text>
+                //       </View>
+                //     </View>
+                //   </View>
+                // </TouchableWithoutFeedback>
+
+                <TouchableWithoutFeedback activeOpacity={0.8}>
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: '#fff',
+                    borderRadius: 15,
+                    padding: 15,
+                    marginVertical: 8,
+                    elevation: 5,
+                    shadowColor: '#000',
+                    shadowOpacity: 0.1,
+                    shadowRadius: 6,
+                  }}>
+
+                    <TouchableOpacity
                       style={{
-                        alignItems: 'center',
+                        width: 40,
+                        height: 40,
+                        borderRadius: 20,
+                        backgroundColor: '#EF4444',
                         justifyContent: 'center',
-                      }}>
+                        alignItems: 'center',
+                        marginRight: 15,
+                      }}
+                      onPress={() => onDeleteProduct(index)}
+                    >
                       <AntDesign
                         name="delete"
-                        size={30}
-                        color="red"
-                        onPress={() => {
-                          //onDeleteProduct(item.id);
-                          onDeleteProduct(index);
-                        }}
+                        size={18}
+                        color="#fff"
                       />
-                    </View>
-                    <View
-                      style={{
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        margin: 5,
+                    </TouchableOpacity>
+
+                    <View style={{ flex: 1 }}>
+
+                      <Text style={{
+                        fontSize: 17,
+                        fontWeight: '700',
+                        color: '#111827',
                       }}>
-                      <View
-                        style={{
-                          flexDirection: 'row',
+                        {item.name}
+                      </Text>
+
+                      <View style={{
+                        marginTop: 10,
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}>
+                        <Text style={{
+                          fontSize: 14,
+                          color: '#6B7280',
                         }}>
-                        <Text
-                          style={{
-                            fontSize: 12,
-                            fontFamily: 'Lato-Regular',
-                            color: '#000',
-                            margin: 2,
-                            padding: 2,
-                            textAlignVertical: 'center',
-                          }}>
-                          Name :{' '}
+                          Qty : {item.key}
                         </Text>
-                        <Text
-                          style={{
-                            fontSize: 14,
-                            fontFamily: 'Lato-Bold',
-                            color: '#000',
-                            width: '80%',
-                            textAlignVertical: 'center',
-                          }}>
-                          {item.name}
+
+                        <Text style={{
+                          fontSize: 18,
+                          fontWeight: 'bold',
+                          color: '#16A34A',
+                        }}>
+                          ₹ {item.amount}
                         </Text>
                       </View>
-                      <View
-                        style={{
-                          flexDirection: 'row',
-                        }}>
-                        <Text
-                          style={{
-                            fontSize: 12,
-                            fontFamily: 'Lato-Regular',
-                            color: '#000',
-                            margin: 2,
-                            padding: 2,
-                            textAlignVertical: 'center',
-                          }}>
-                          Qty :{' '}
-                        </Text>
-                        <Text
-                          style={{
-                            fontSize: 14,
-                            fontFamily: 'Lato-Bold',
-                            color: '#000',
-                            textAlignVertical: 'center',
-                          }}>
-                          {item.key}
-                        </Text>
-                        <Text
-                          style={{
-                            fontSize: 12,
-                            fontFamily: 'Lato-Regular',
-                            color: '#000',
-                            margin: 2,
-                            padding: 2,
-                            textAlignVertical: 'center',
-                          }}>
-                          Amount :{' '}
-                        </Text>
-                        <Text
-                          style={{
-                            fontSize: 14,
-                            fontFamily: 'Lato-Bold',
-                            color: '#000',
-                            textAlignVertical: 'center',
-                          }}>
-                          {item.amount}
-                        </Text>
-                      </View>
+
                     </View>
+
                   </View>
                 </TouchableWithoutFeedback>
               );
@@ -1745,7 +1815,7 @@ const style = StyleSheet.create({
     alignItems: 'center',
     shadowColor: '#000',
     shadowOpacity: 0.2,
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowRadius: 10,
     elevation: 5,
   },

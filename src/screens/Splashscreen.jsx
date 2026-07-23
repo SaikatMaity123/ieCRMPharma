@@ -2,6 +2,7 @@ import {
   View,
   Text,
   SafeAreaView,
+  Alert,
   TouchableOpacity,
   ActivityIndicator,
   ImageBackground,
@@ -69,7 +70,7 @@ const Splashscreen = ({navigation}) => {
         bid +
         '&DeviceID=' +
         guid;
-      console.log(url);
+      console.log('checkDeviceExist',url);
 
       const response = await fetch(url);
 
@@ -255,9 +256,10 @@ const Splashscreen = ({navigation}) => {
         </Animated.View>
 
         <TouchableWithoutFeedback
-          onPressIn={onGetStartedPressIn}
-          onPressOut={onGetStartedPressOut}
-          onPress={() => navigation.navigate('LogIn')}>
+          // onPressIn={onGetStartedPressIn}
+          // onPressOut={onGetStartedPressOut}
+          //onPress={() => navigation.navigate('LogIn')}
+          >
           <Animated.View
             style={{
               padding: 10,

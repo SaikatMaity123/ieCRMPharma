@@ -22,37 +22,51 @@ import {
   LogBox,
   Image,
   Pressable,
+  Platform,
+  PanResponder,
 } from 'react-native';
-import React, {useEffect, useState, useRef, useCallback} from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
-import {BASE_URL, Sales_URL, url} from '@env';
-import {openDatabase} from 'react-native-sqlite-storage';
+import { BASE_URL, Sales_URL, url } from '@env';
+import { openDatabase } from 'react-native-sqlite-storage';
 import axios from 'axios';
 import moment from 'moment';
-import {useFocusEffect} from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import Voice from '@react-native-voice/voice';
 import AntDesign from 'react-native-vector-icons/AntDesign';
-import {BarChart, LineChart} from 'react-native-gifted-charts';
+import { BarChart, LineChart } from 'react-native-gifted-charts';
 import CustomViewMaster from '../components/custom/CustomViewMaster';
 import CRMImg from '../images/CRMNEW.svg';
 import ProgressDialog from '../components/custom/ProgressDialog';
 import HomeImg from '../images/home.svg';
-import {CommonActions} from '@react-navigation/native';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import { CommonActions } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Feather from 'react-native-vector-icons/Feather';
-import {format} from 'date-fns';
-import {Dropdown} from 'react-native-element-dropdown';
-import {PieChart} from 'react-native-gifted-charts';
+import { format } from 'date-fns';
+import { Dropdown } from 'react-native-element-dropdown';
+import { PieChart } from 'react-native-gifted-charts';
 import LottieView from 'lottie-react-native';
 import Icon from 'react-native-vector-icons/FontAwesome5';
-import {firebaseChatLogin} from '../utils/firebaseChatAuth';
+import { firebaseChatLogin } from '../utils/firebaseChatAuth';
 import auth from '@react-native-firebase/auth';
+import XLSX from 'xlsx';
+import RNFS from 'react-native-fs';
+import Share from 'react-native-share';
+import RNBlobUtil from 'react-native-blob-util';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { Buffer } from 'buffer';
+import { log } from 'console';
+import { Use } from 'react-native-svg';
+
+//import Share from 'react-native-share';
 //import PushNotification from 'react-native-push-notification';
 // import { showLocalNotification } from './NotificationService';
 //import messaging from '@react-native-firebase/messaging';
-const {width, height} = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
+const isTablet = width >= 768;
+global.Buffer = global.Buffer || require('buffer').Buffer;
 //database connection
 const db = openDatabase(
   {
@@ -65,7 +79,7 @@ const db = openDatabase(
   error => console.log('Database error', error), //on error
 );
 
-const CRMDashBoard = ({navigation}) => {
+const CRMDashBoard = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const [useIDEmployee, setIDEmployee] = useState('');
   const [useBusinessID, setBusinessID] = useState('');
@@ -92,18 +106,22 @@ const CRMDashBoard = ({navigation}) => {
   const [isTyping, setIsTyping] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
-  const [netState, setNetState] = useState({isConnected: true});
+  const [netState, setNetState] = useState({ isConnected: true });
   const scrollViewRef = useRef(null);
+  const apiTraceInstalledRef = useRef(false);
   const [refreshing, setRefreshing] = useState(false);
   const [todayDashboardData, setTodayDashboardData] = useState([]);
   const [avgDashboardData, setAvgDashboardData] = useState([]);
   const [modules, setModules] = useState([]);
   const [gamesTab, setGamesTab] = useState(1);
   const [isModalVisible, setModalVisible] = useState(false);
+  const [isIncentiveModalVisible, setIncentiveModalVisible] = useState(false);
   const [salesLoading, setSalesLoading] = useState(false);
   const [useModalMessage, setModalMessage] = useState('');
   const [birthdays, setBirthdays] = useState([]);
   const [noticeboard, setNoticeBoard] = useState([]);
+  const [visible, setVisible] = useState(false);
+  const [noticeurl, setNoticeUrl] = useState('');
   const [profilePicPath, setProfilePicPath] = useState('');
   const [myteam, setMyTeam] = useState([]);
   const [currentPage, setCurrentPage] = useState(0);
@@ -114,25 +132,259 @@ const CRMDashBoard = ({navigation}) => {
   const [phoneModalVisible, setPhoneModalVisible] = useState(false);
   const [selectedPhone, setSelectedPhone] = useState(null);
   const [selectedEmp, setSelectedEmp] = useState(null);
+  const [visitDetailsModalVisible, setVisitDetailsModalVisible] =
+    useState(false);
+  const [visitReport, setVisitReport] = useState([]);
+  const [reportCount, setReportCount] = useState(null);
+  const [loadingVisitDetails, setLoadingVisitDetails] = useState(false);
+  const [useHq, setUseHq] = useState('');
+  const [showMPPLData, setshowMPPLData] = useState(false);
+  const [isFocus, setIsFocus] = useState(false);
+  const [useIDyear, setIDyear] = useState([]);
+  const [useIDQuarter, setIDQuarter] = useState([]);
+  const [useIDyearvalue, setIDyearValue] = useState('');
+  const [useIDQuartervalue, setIDQuarterValue] = useState('');
+  const [products, setProducts] = useState([]);
+  const [totalAmount, setTotalAmount] = useState(0);
+  const [dataFound, setDataFound] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [moduleLoadMessage, setModuleLoadMessage] = useState('');
+  const [isDashboardTabOpen, setIsDashboardTabOpen] = useState(false);
 
-  const DashboardCard = ({title, count, backgroundColor, icon}) => (
-    <View style={[styles.card, {backgroundColor}]}>
-      {/* Icon in top-right */}
-      <View style={styles.iconContainer}>
-        <Feather name={icon} size={24} color="#005696" />
+  const dashboardTabAnim = useRef(new Animated.Value(0)).current;
+
+  const dashboardTabWidth = Math.min(width * 0.92, isTablet ? 540 : width - 28);
+
+  const openDashboardTab = () => {
+    setIsDashboardTabOpen(true);
+
+    Animated.timing(dashboardTabAnim, {
+      toValue: 1,
+      duration: 280,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const closeDashboardTab = () => {
+    Animated.timing(dashboardTabAnim, {
+      toValue: 0,
+      duration: 240,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start(() => {
+      setIsDashboardTabOpen(false);
+    });
+  };
+
+  const dashboardTabTranslateX = dashboardTabAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [dashboardTabWidth, 0],
+  });
+
+  const dashboardTabBackdropOpacity = dashboardTabAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 0.42],
+  });
+
+  const dashboardTabSwipeResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        const isHorizontalSwipe =
+          Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
+
+        return isHorizontalSwipe && gestureState.dx < -14;
+      },
+
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx < -45) {
+          openDashboardTab();
+        }
+      },
+    }),
+  ).current;
+
+  const dashboardTabCloseResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        const isHorizontalSwipe =
+          Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
+
+        return isHorizontalSwipe && gestureState.dx > 14;
+      },
+
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx > 45) {
+          closeDashboardTab();
+        }
+      },
+    }),
+  ).current;
+
+
+  const traceApiError = (label, endpoint, error) => {
+    const status = error?.response?.status || error?.status;
+    const data = error?.response?.data || error?.data;
+    console.log('[API TRACE]', {
+      label,
+      endpoint,
+      message: error?.message,
+      status,
+      data,
+    });
+  };
+
+  const getDataShape = value => {
+    if (Array.isArray(value)) {
+      return {
+        type: 'array',
+        count: value.length,
+        firstItem: value[0] || null,
+      };
+    }
+
+    if (value && typeof value === 'object') {
+      return {
+        type: 'object',
+        keys: Object.keys(value),
+        dataType: Array.isArray(value.data) ? 'data-array' : typeof value.data,
+        dataCount: Array.isArray(value.data) ? value.data.length : null,
+        firstDataItem: Array.isArray(value.data) ? value.data[0] || null : null,
+      };
+    }
+
+    return {
+      type: typeof value,
+      value,
+    };
+  };
+
+  const traceApiSuccess = (label, endpoint, status, data) => {
+    console.log('[API SUCCESS]', {
+      label,
+      endpoint,
+      status,
+      shape: getDataShape(data),
+    });
+  };
+
+  const traceProcessingError = (label, endpoint, step, error, extra = {}) => {
+    console.log('[PROCESS TRACE]', {
+      label,
+      endpoint,
+      step,
+      message: error?.message || String(error),
+      extra,
+    });
+  };
+
+  const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+  const axiosGetWithRetry = async (label, endpoint, attempts = 3) => {
+    let lastError;
+
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+      try {
+        return await axios.get(endpoint, { timeout: 15000 });
+      } catch (error) {
+        lastError = error;
+
+        if (attempt === attempts) {
+          break;
+        }
+
+        console.log('[API RETRY]', {
+          label,
+          endpoint,
+          attempt,
+          message: error?.message,
+        });
+        await sleep(800 * attempt);
+      }
+    }
+
+    throw lastError;
+  };
+
+  const insertDashboardRows = (label, endpoint, rows) => {
+    if (!Array.isArray(rows)) {
+      traceProcessingError(
+        label,
+        endpoint,
+        'DashboardData response is not an array',
+        new Error('Invalid DashboardData response'),
+        { shape: getDataShape(rows) },
+      );
+      return;
+    }
+
+    rows.forEach((array, index) => {
+      const params = [
+        array?.Module ?? '',
+        array?.IDMenu ?? '',
+        array?.MainModuleSRL ?? '',
+      ];
+
+      if (!array?.Module || array?.IDMenu === undefined) {
+        traceProcessingError(
+          label,
+          endpoint,
+          'DashboardData row has missing fields',
+          new Error('Missing fields'),
+          { index, item: array, params },
+        );
+      }
+
+      db.executeSql(
+        'INSERT INTO DashboardData(Module,IDMenu,MainModuleSRL) VALUES (?,?,?)',
+        params,
+        () => {
+          console.log('[SQL TRACE]', {
+            label,
+            table: 'DashboardData',
+            index,
+            status: 'inserted',
+            params,
+          });
+        },
+        error => {
+          traceProcessingError(
+            label,
+            endpoint,
+            'DashboardData insert failed',
+            error,
+            { index, item: array, params },
+          );
+        },
+      );
+    });
+  };
+
+  const DashboardCard = ({ title, count, icon }) => (
+    <View style={styles.compactMetricCard}>
+      <View style={styles.compactMetricTop}>
+        <View style={styles.compactMetricIconBox}>
+          <Feather name={icon} size={16} color="#005696" />
+        </View>
+
+        <View style={styles.compactMetricDot} />
       </View>
 
-      {/* Title and Count */}
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.count}>{count}</Text>
+      <Text style={styles.compactMetricCount} numberOfLines={1}>
+        {count ?? 0}
+      </Text>
+
+      <Text style={styles.compactMetricTitle} numberOfLines={2}>
+        {title}
+      </Text>
     </View>
   );
 
-  const QuickAccessCard = ({title, icon, backgroundColor}) => (
+  const QuickAccessCard = ({ title, icon, backgroundColor }) => (
     <TouchableOpacity
       onPress={() => Alert.alert('Notice', 'Quick Access is coming soon')}
-      style={{flex: 1}}>
-      <View style={[styles.card, {backgroundColor}]}>
+      style={{ flex: 1 }}>
+      <View style={[styles.dashboardCard, { backgroundColor }]}>
         <Text style={styles.titlequickaccess}>{title}</Text>
         <Feather name={icon} size={28} color="#ffffff" style={styles.icon} />
         {/* <Text style={styles.count}>{count}</Text> */}
@@ -150,7 +402,7 @@ const CRMDashBoard = ({navigation}) => {
   const measureSpeed = async () => {
     let poorCount = 0;
 
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 3; i++) {
       const netState = await NetInfo.fetch();
       if (!netState.isConnected) {
         console.log('No connection. Skipping speed check.');
@@ -173,7 +425,7 @@ const CRMDashBoard = ({navigation}) => {
         setSpeed(speedInKbps);
         // console.log(Check ${i + 1}: ${speedInKbps.toFixed(2)} KB/s);
 
-        if (speedInKbps < 50.0) {
+        if (speedInKbps < 150.0) {
           poorCount++;
         }
       } catch (err) {
@@ -184,12 +436,62 @@ const CRMDashBoard = ({navigation}) => {
       await new Promise(resolve => setTimeout(resolve, 1000)); // wait 1 second before next check
     }
 
-    if (poorCount === 5) {
+    if (poorCount === 3) {
       setIsPoorConnection(true);
     } else {
       setIsPoorConnection(false);
     }
   };
+
+  useEffect(() => {
+    if (apiTraceInstalledRef.current) {
+      return;
+    }
+
+    apiTraceInstalledRef.current = true;
+
+    const responseInterceptor = axios.interceptors.response.use(
+      response => {
+        traceApiSuccess(
+          'axios',
+          response?.config?.url,
+          response?.status,
+          response?.data,
+        );
+        return response;
+      },
+      error => {
+        traceApiError('axios', error?.config?.url, error);
+        return Promise.reject(error);
+      },
+    );
+
+    const originalFetch = global.fetch;
+    global.fetch = async (...args) => {
+      const endpoint =
+        typeof args[0] === 'string' ? args[0] : args[0]?.url || 'unknown';
+      try {
+        const response = await originalFetch(...args);
+        console.log('[FETCH SUCCESS]', {
+          endpoint,
+          status: response?.status,
+          ok: response?.ok,
+        });
+        return response;
+      } catch (error) {
+        traceApiError('fetch', endpoint, error);
+        throw error;
+      }
+    };
+
+    return () => {
+      axios.interceptors.response.eject(responseInterceptor);
+      global.fetch = originalFetch;
+      apiTraceInstalledRef.current = false;
+    };
+    // Install global API tracing once for this dashboard mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     LogBox.ignoreAllLogs();
@@ -251,44 +553,64 @@ const CRMDashBoard = ({navigation}) => {
   const eDate = moment().subtract(1, 'days').format('YYYY/MM/DD'); // yesterday
   //end here
 
-  useEffect( () => {
+  useEffect(() => {
     // code by suman jana 30/05/2025
-    requestNotificationPermission();
-    getFcmToken();
+    // requestNotificationPermission();
+    // getFcmToken();
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
     }, 5000);
-    
     try {
-      
       AsyncStorage.getItem('UserData').then(async value => {
         if (value != null) {
           let user = JSON.parse(value);
-          console.log('User Data from AsyncStorage ieCRM Pharma : ', user);
+          console.log('User Data from AsyncStorage : ', user);
           setIDEmployee(user.IDEmployee);
           setBusinessID(user.BusinessID);
           setEmpname(user.Empname);
+          setEmpNo(user.Empno);
           setuseManagerAccess(user.ManagerAccess);
           setuseMobileAccess(user.MobileAccess);
           setAdminAcess(user.AdminAccess);
-          //setTrackingTime(user.TrackingTime);
+          setTrackingTime(user.TrackingTime);
           setProfilePicPath(user.ProfilePicPath);
           setDivision(user.Division);
           setSecurityKey(user.SecurityKey);
           setEmpemail(user.Empemail);
-          setEmpNo(user.Empno);
           setDesiganation(user.Designation);
-
+          setUseHq(user.HQ);
           fetchModules(user.BusinessID, user.Designation);
           //if (user.Designation !== 'DY_ZSM' && user.Designation !== 'ZSM') {
+          if (user.Division === 'MPPL') {
+            setshowMPPLData(true);
+          } else {
+            setshowMPPLData(false);
+          }
+
+          // NetInfo.fetch().then(state => {
+          //   if (state.isConnected) {
+          //     fetchOfflineData(
+          //       user.BusinessID,
+          //       user.IDEmployee,
+          //       user.IDManager,
+          //     );
+          //   } else {
+          //     Alert.alert('No Internet');
+          //   }
+          // }, []);
+
           NetInfo.fetch().then(state => {
             if (state.isConnected) {
               if (user.AdminAccess === true) {
+                fetchBirthdays(user.BusinessID);
+                fetchNoticeBoard(user.BusinessID, user.IDDivision);
+                fetchMyTeam(user.BusinessID, user.IDEmployee);
               } else {
                 if (
                   user.Designation !== 'DY_ZSM' &&
-                  user.Designation !== 'ZSM'
+                  user.Designation !== 'ZSM' &&
+                  user.Designation !== 'SR-ZSM'
                 ) {
                   if (user.ManagerAccess === true) {
                     managerEmployeeWiseOfflineAreaList(
@@ -336,6 +658,9 @@ const CRMDashBoard = ({navigation}) => {
                   tourdateCheck(user.BusinessID, month, cYear, user.IDEmployee);
                   expenseRequestList(user.BusinessID, user.IDEmployee);
                   orderBookingPrice(user.BusinessID);
+                  if (user.BusinessID.trim() != 'GENI-QST-536') {
+                    getIDYearIncentive(user.BusinessID);
+                  }
                   orderBookingBillingSeries(user.BusinessID);
                   orderBookingProductList(user.BusinessID);
                   masterDoctorType(user.BusinessID);
@@ -414,7 +739,8 @@ const CRMDashBoard = ({navigation}) => {
                 }
               }
 
-              //Alert.alert('Hello Dadu');
+              getFrequencyDetail(user.BusinessID);
+              getConfigurationDetail(user.BusinessID);
               fetchQuizModules(user.BusinessID, user.IDEmployee);
               fetchMasterModules(user.BusinessID, user.IDEmployee);
               fetchDCRModules(user.BusinessID, user.IDEmployee);
@@ -426,20 +752,26 @@ const CRMDashBoard = ({navigation}) => {
           }, []);
         }
       });
-    //   const id = await AsyncStorage.getItem('GUID');
-    // const bid = await AsyncStorage.getItem('BUSINESS_ID');
-
-    // checkDeviceExist(id, bid);
     } catch (error) {
-      Alert.alert(error);
+      console.log(error.message);
     }
+    // This is the dashboard bootstrap; rerunning it on every helper identity
+    // change would repeat the full startup sync and API load.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (useDivision && useEmpemail && useDesignation && useEmpNo) {
-      fetchSaledata(viewType); // run once with default "Monthly"
+      fetchSaledata(viewType);
     }
-  }, [useDivision, useEmpemail, useDesignation, useEmpNo]);
+  }, [
+    fetchSaledata,
+    useDivision,
+    useEmpemail,
+    useDesignation,
+    useEmpNo,
+    viewType,
+  ]);
 
   // code by suman jana date - 24/05/2025
   const onRefresh = useCallback(() => {
@@ -463,6 +795,7 @@ const CRMDashBoard = ({navigation}) => {
           fetchBirthdays(user.BusinessID);
           fetchNoticeBoard(user.BusinessID, user.IDDivision);
           fetchMyTeam(user.BusinessID, user.IDEmployee);
+          fetchModules(user.BusinessID, user.Designation);
           //end
         }
       })
@@ -476,7 +809,9 @@ const CRMDashBoard = ({navigation}) => {
           onSelectSwitch(1);
         }, 1000); // shorter refresh delay for better UX
       });
-  }, []);
+    // Keep pull-to-refresh tied to the current computed date range only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eDate, sDate]);
   // end here
 
   useFocusEffect(
@@ -488,7 +823,7 @@ const CRMDashBoard = ({navigation}) => {
             onPress: () => null,
             style: 'cancel',
           },
-          {text: 'YES', onPress: () => BackHandler.exitApp()},
+          { text: 'YES', onPress: () => BackHandler.exitApp() },
         ]);
         return true;
       };
@@ -629,7 +964,7 @@ const CRMDashBoard = ({navigation}) => {
       const userInput = chatInput.trim();
       const cleaned = userInput.toLowerCase();
 
-      const userMsg = {sender: 'user', text: userInput};
+      const userMsg = { sender: 'user', text: userInput };
       setChatMessages(prev => [...prev, userMsg]);
       setIsTyping(true);
       setChatInput('');
@@ -638,7 +973,7 @@ const CRMDashBoard = ({navigation}) => {
 
       /* ✅ 1. Predefined responses */
       if (botResponses[cleaned]) {
-        const botMsg = {sender: 'bot', text: botResponses[cleaned]};
+        const botMsg = { sender: 'bot', text: botResponses[cleaned] };
         setIsTyping(false);
         setChatMessages(prev => [...prev, botMsg]);
         return;
@@ -666,7 +1001,7 @@ const CRMDashBoard = ({navigation}) => {
         const botText =
           data?.response || "Sorry, I couldn't generate a response.";
 
-        const botMsg = {sender: 'bot', text: botText};
+        const botMsg = { sender: 'bot', text: botText };
         setIsTyping(false);
         setChatMessages(prev => [...prev, botMsg]);
       } else {
@@ -765,14 +1100,14 @@ const CRMDashBoard = ({navigation}) => {
                     navigation.dispatch(
                       CommonActions.reset({
                         index: 0,
-                        routes: [{name: 'DCR Session'}], // or whatever your main screen is
+                        routes: [{ name: 'DCR Session' }], // or whatever your main screen is
                       }),
                     );
                   }
                 },
                 error => {
                   // Error occurred while executing the query
-                  console.log(error);
+                  console.log(error.message);
                 },
               );
             });
@@ -807,7 +1142,7 @@ const CRMDashBoard = ({navigation}) => {
             navigation.dispatch(
               CommonActions.reset({
                 index: 0,
-                routes: [{name: 'AppNavDCRScreen'}], // or whatever your main screen is
+                routes: [{ name: 'AppNavDCRScreen' }], // or whatever your main screen is
               }),
             );
           } else {
@@ -824,6 +1159,243 @@ const CRMDashBoard = ({navigation}) => {
         error => console.error('Error executing SELECT query: ', error),
       );
     });
+  };
+
+  const fetchOfflineData = async (businessID, idEmployee, idManager) => {
+    const ApiUrl =
+      BASE_URL +
+      'Mobile/Offline/List?Businessid=' +
+      businessID +
+      '&IDEmployee=' +
+      idEmployee +
+      '&IDManager=' +
+      idManager;
+    console.log('ApiUrl', ApiUrl);
+
+    try {
+      const response = await axios.get(ApiUrl);
+
+      if (response.data.Success) {
+        const data = response.data.Data;
+
+        //console.log('data.ManagerAreaList', data.ManagerAreaList);
+
+        await saveManagerAreas(data.ManagerAreaList || []);
+        await saveManagerDoctors(data.ManagerDoctorList || []);
+        await saveManagerRetailers(data.ManagerRetailerList || []);
+        await saveEmployeeOfflineOrderBookingCustomerList(
+          data.EmployeeOfflineOrderBookingCustomerList || [],
+        );
+        await saveEmployeeDoctorList(data.EmployeeDoctorList || []);
+        await saveEmployeeRetailerList(data.EmployeeRetailerList || []);
+        await saveEmployeeDoctorProductMappingList(
+          data.EmployeeDoctorProductMappingList || [],
+        );
+      }
+    } catch (error) {
+      console.log(error.message);
+    }
+  };
+
+  const saveManagerAreas = areas => {
+    db.transaction(txn => {
+      txn.executeSql('DROP TABLE IF EXISTS CRM_ManagerAreaList', []);
+      txn.executeSql(
+        'CREATE TABLE IF NOT EXISTS CRM_ManagerAreaList(IDArea INTEGER,Area VARCHAR,IDEmployee INTEGER)',
+        [],
+      );
+    });
+    //SQLITE INSERT AreaListTBL
+    var _value = [];
+    _value = areas;
+    for (var j = 0; j < _value.length; j++) {
+      const array = _value[j];
+      let sql =
+        'INSERT INTO CRM_ManagerAreaList(IDArea,Area,IDEmployee) VALUES (?,?,?)';
+      let params = [array.IDArea, array.Area, array.IDEmployee]; //storing user data in an array
+      db.executeSql(sql, params);
+    }
+  };
+
+  const saveManagerDoctors = areas => {
+    db.transaction(txn => {
+      txn.executeSql('DROP TABLE IF EXISTS CRM_ManagerDoctorList', []);
+      txn.executeSql(
+        'CREATE TABLE IF NOT EXISTS CRM_ManagerDoctorList (IDDoctor INTEGER PRIMARY KEY,Code TEXT,Name TEXT,Latitude1 TEXT,Longitude1 TEXT,Latitude2 TEXT,Longitude2 TEXT,AreaName TEXT,IDArea INTEGER,IDEmployee INTEGER,FullName TEXT)',
+        [],
+      );
+    });
+    //SQLITE INSERT AreaListTBL
+    var _value = [];
+    _value = areas;
+    for (var j = 0; j < _value.length; j++) {
+      const item = _value[j];
+      let sql =
+        'INSERT INTO CRM_ManagerDoctorList(IDDoctor,Code,Name,Latitude1,Longitude1,Latitude2,Longitude2,AreaName,IDArea,IDEmployee,FullName) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+      let params = [
+        item.IDDoctor,
+        item.Code,
+        item.Name,
+        item.Latitude1,
+        item.Longitude1,
+        item.Latitude2,
+        item.Longitude2,
+        item.AreaName,
+        item.IDArea,
+        item.IDEmployee,
+        item.FullName,
+      ]; //storing user data in an array
+      db.executeSql(sql, params);
+    }
+  };
+
+  const saveManagerRetailers = areas => {
+    db.transaction(txn => {
+      txn.executeSql('DROP TABLE IF EXISTS CRM_ManagerRetailerList', []);
+      txn.executeSql(
+        'CREATE TABLE IF NOT EXISTS CRM_ManagerRetailerList (IDRetailer INTEGER PRIMARY KEY,Code TEXT,Name TEXT,Latitude TEXT,Longitude TEXT,AreaName TEXT,IDArea INTEGER,IDEmployee INTEGER,FullName TEXT)',
+        [],
+      );
+    });
+    //SQLITE INSERT AreaListTBL
+    var _value = [];
+    _value = areas;
+    for (var j = 0; j < _value.length; j++) {
+      const item = _value[j];
+      let sql =
+        'INSERT INTO CRM_ManagerRetailerList(IDRetailer,Code,Name,Latitude,Longitude,AreaName,IDArea,IDEmployee,FullName) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)';
+      let params = [
+        item.IDRetailer,
+        item.Code,
+        item.Name,
+        item.Latitude,
+        item.Longitude,
+        item.AreaName,
+        item.IDArea,
+        item.IDEmployee,
+        item.FullName,
+      ]; //storing user data in an array
+      db.executeSql(sql, params);
+    }
+  };
+
+  const saveEmployeeOfflineOrderBookingCustomerList = areas => {
+    db.transaction(txn => {
+      txn.executeSql(
+        'DROP TABLE IF EXISTS CRM_EmployeeOfflineOrderBookingCustomerList',
+        [],
+      );
+      txn.executeSql(
+        'CREATE TABLE IF NOT EXISTS CRM_EmployeeOfflineOrderBookingCustomerList (IDRetailer INTEGER PRIMARY KEY,Code TEXT,OtherCode TEXT,Name TEXT,IDArea INTEGER)',
+        [],
+      );
+    });
+    //SQLITE INSERT AreaListTBL
+    var _value = [];
+    _value = areas;
+    for (var j = 0; j < _value.length; j++) {
+      const item = _value[j];
+      let sql =
+        'INSERT INTO CRM_EmployeeOfflineOrderBookingCustomerList(IDRetailer,Code,OtherCode,Name,IDArea) VALUES (?, ?, ?, ?, ?)';
+      let params = [
+        item.IDRetailer,
+        item.Code,
+        item.OtherCode,
+        item.Name,
+        item.IDArea,
+      ]; //storing user data in an array
+      db.executeSql(sql, params);
+    }
+  };
+
+  const saveEmployeeDoctorList = areas => {
+    db.transaction(txn => {
+      txn.executeSql('DROP TABLE IF EXISTS CRM_EmployeeDoctorList', []);
+      txn.executeSql(
+        'CREATE TABLE IF NOT EXISTS CRM_EmployeeDoctorList (IDDoctor INTEGER PRIMARY KEY,Code TEXT,Name TEXT,Latitude1 TEXT,Longitude1 TEXT,Latitude2 TEXT,Longitude2 TEXT,AreaName TEXT,IDArea INTEGER,IDEmployee INTEGER,FullName TEXT)',
+        [],
+      );
+    });
+    //SQLITE INSERT AreaListTBL
+    var _value = [];
+    _value = areas;
+    for (var j = 0; j < _value.length; j++) {
+      const item = _value[j];
+      let sql =
+        'INSERT INTO CRM_EmployeeDoctorList(IDDoctor,Code,Name,Latitude1,Longitude1,Latitude2,Longitude2,AreaName,IDArea,IDEmployee,FullName) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+      let params = [
+        item.IDDoctor,
+        item.Code,
+        item.Name,
+        item.Latitude1,
+        item.Longitude1,
+        item.Latitude2,
+        item.Longitude2,
+        item.AreaName,
+        item.IDArea,
+        item.IDEmployee,
+        item.FullName,
+      ]; //storing user data in an array
+      db.executeSql(sql, params);
+    }
+  };
+
+  const saveEmployeeRetailerList = areas => {
+    db.transaction(txn => {
+      txn.executeSql('DROP TABLE IF EXISTS CRM_EmployeeRetailerList', []);
+      txn.executeSql(
+        'CREATE TABLE IF NOT EXISTS CRM_EmployeeRetailerList (IDRetailer INTEGER PRIMARY KEY,Code TEXT,Name TEXT,Latitude TEXT,Longitude TEXT,AreaName TEXT,IDArea INTEGER,IDEmployee INTEGER,FullName TEXT)',
+        [],
+      );
+    });
+    //SQLITE INSERT AreaListTBL
+    var _value = [];
+    _value = areas;
+    for (var j = 0; j < _value.length; j++) {
+      const item = _value[j];
+      let sql =
+        'INSERT INTO CRM_EmployeeRetailerList(IDRetailer,Code,Name,Latitude,Longitude,AreaName,IDArea,IDEmployee,FullName) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)';
+      let params = [
+        item.IDRetailer,
+        item.Code,
+        item.Name,
+        item.Latitude,
+        item.Longitude,
+        item.AreaName,
+        item.IDArea,
+        item.IDEmployee,
+        item.FullName,
+      ]; //storing user data in an array
+      db.executeSql(sql, params);
+    }
+  };
+  const saveEmployeeDoctorProductMappingList = areas => {
+    db.transaction(txn => {
+      txn.executeSql(
+        'DROP TABLE IF EXISTS CRM_EmployeeDoctorProductMappingList',
+        [],
+      );
+      txn.executeSql(
+        'CREATE TABLE IF NOT EXISTS CRM_EmployeeDoctorProductMappingList (IDDoctor INTEGER PRIMARY KEY,IDStage INTEGER,Stage TEXT,IDProduct INTEGER,ProductName TEXT)',
+        [],
+      );
+    });
+    //SQLITE INSERT AreaListTBL
+    var _value = [];
+    _value = areas;
+    for (var j = 0; j < _value.length; j++) {
+      const item = _value[j];
+      let sql =
+        'INSERT INTO CRM_EmployeeDoctorProductMappingList(IDDoctor,IDStage ,Stage ,IDProduct ,ProductName ) VALUES (?, ?, ?, ?,?)';
+      let params = [
+        item.IDDoctor,
+        item.IDStage,
+        item.Stage,
+        item.IDProduct,
+        item.ProductName,
+      ]; //storing user data in an array
+      db.executeSql(sql, params);
+    }
   };
 
   const areaList = (businessID, hqID) => {
@@ -861,9 +1433,10 @@ const CRMDashBoard = ({navigation}) => {
         }
       })
       .catch(function (error) {
-        Alert.alert(error);
+        console.log(error.message);
       });
   };
+
   const docList = (businessID, empID) => {
     const docurl =
       BASE_URL +
@@ -910,9 +1483,10 @@ const CRMDashBoard = ({navigation}) => {
         //console.log(_value);
       })
       .catch(function (error) {
-        Alert.alert(error);
+        console.log(error.message);
       });
   };
+
   const retList = (businessID, empID) => {
     const returl =
       BASE_URL +
@@ -920,7 +1494,7 @@ const CRMDashBoard = ({navigation}) => {
       businessID +
       '&IDEmployee=' +
       empID;
-    console.log('returl ' + returl);
+    //console.log('returl ' + returl);
     var config = {
       method: 'get',
       url: returl,
@@ -960,9 +1534,10 @@ const CRMDashBoard = ({navigation}) => {
         //console.log(_value);
       })
       .catch(function (error) {
-        Alert.alert(error);
+        console.log(error.message);
       });
   };
+
   const doctorProductMappingOfflineList = (businessID, empEmail, idEmp) => {
     const returl =
       BASE_URL +
@@ -1013,7 +1588,7 @@ const CRMDashBoard = ({navigation}) => {
         //console.log(_value);
       })
       .catch(function (error) {
-        Alert.alert(error);
+        console.log(error.message);
       });
   };
 
@@ -1054,7 +1629,7 @@ const CRMDashBoard = ({navigation}) => {
         }
       })
       .catch(function (error) {
-        Alert.alert(error);
+        console.log(error.message);
       });
   };
 
@@ -1093,32 +1668,32 @@ const CRMDashBoard = ({navigation}) => {
         }
       })
       .catch(function (error) {
-        Alert.alert(error);
+        console.log(error.message);
       });
   };
 
   //code by suman jana Date - 24/08/2025
 
   // code by  suman jana -30/05/2025
-  const requestNotificationPermission = async () => {
-    if (Platform.OS === 'ios') {
-      const authStatus = await messaging().requestPermission();
-      const enabled =
-        authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-        authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+  // const requestNotificationPermission = async () => {
+  //     if (Platform.OS === 'ios') {
+  //         const authStatus = await messaging().requestPermission();
+  //         const enabled =
+  //             authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+  //             authStatus === messaging.AuthorizationStatus.PROVISIONAL;
 
-      if (!enabled) {
-        Alert.alert('Notification permission not granted');
-      }
-    } else if (Platform.OS === 'android') {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
-      );
-      if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-        Alert.alert('Notification permission denied');
-      }
-    }
-  };
+  //         if (!enabled) {
+  //             Alert.alert('Notification permission not granted');
+  //         }
+  //     } else if (Platform.OS === 'android') {
+  //         const granted = await PermissionsAndroid.request(
+  //             PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
+  //         );
+  //         if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+  //             Alert.alert('Notification permission denied');
+  //         }
+  //     }
+  // };
   // const requestNotificationPermission = async () => {
   //   if (Platform.OS === 'android') {
   //     if (Platform.Version >= 33) {
@@ -1150,20 +1725,20 @@ const CRMDashBoard = ({navigation}) => {
   //   }
   // };
 
-  const getFcmToken = async () => {
-    try {
-      // Register the device (important for iOS)
-      await messaging().registerDeviceForRemoteMessages();
+  // const getFcmToken = async () => {
+  //   try {
+  //     // Register the device (important for iOS)
+  //     await messaging().registerDeviceForRemoteMessages();
 
-      const token = await messaging().getToken();
-      console.log('FCM Token:', token);
+  //     const token = await messaging().getToken();
+  //     console.log('FCM Token:', token);
 
-      //  Save token to your backend or SQLite
-      // saveTokenToDatabase(token); // Your own implementation
-    } catch (error) {
-      console.error('Failed to get FCM token:', error);
-    }
-  };
+  //     //  Save token to your backend or SQLite
+  //     // saveTokenToDatabase(token); // Your own implementation
+  //   } catch (error) {
+  //     console.error('Failed to get FCM token:', error);
+  //   }
+  // };
 
   const employeeWiseDashboardData = async (businessID, idemp, sDate, eDate) => {
     try {
@@ -1202,31 +1777,38 @@ const CRMDashBoard = ({navigation}) => {
       const response = await axios.get(DashbourdDoctorVisitFrequencyurl);
       setDoctorDVisitFrequencyata(response.data);
     } catch (error) {
-      console.error('API error:', error);
+      traceApiError(
+        'DoctorVisitFrequency',
+        DashbourdDoctorVisitFrequencyurl,
+        error,
+      );
     } finally {
       setLoading(false);
     }
   };
   const screenWidth = Dimensions.get('window').width;
 
-  const sortedDoctorData = [...DoctorVisitFrequency].sort(
-    (a, b) => Number(a.MonthsName) - Number(b.MonthsName),
-  );
+  const barData = useMemo(() => {
+    const sortedDoctorData = [...DoctorVisitFrequency].sort(
+      (a, b) => Number(a.MonthsName) - Number(b.MonthsName),
+    );
 
-  const last10Data = sortedDoctorData.slice(-10);
+    return sortedDoctorData.slice(-10).map(item => ({
+      value: Number(item.Visit) || 0,
+      label: String(item.MonthsName || ''),
+      frontColor: '#005696',
+      gradientColor: '#A9DDFA',
+      topLabelComponent: () => (
+        <Text style={styles.chartTopLabel}>{item.Visit}</Text>
+      ),
+    }));
+  }, [DoctorVisitFrequency]);
 
-  const barData = last10Data.map(item => ({
-    value: item.Visit,
-    label: item.MonthsName,
-    frontColor: '#005696',
-    gradientColor: '#d1c4e9',
-    topLabelComponent: () => (
-      <Text style={{color: '#005696', fontSize: 12, fontWeight: 'bold'}}>
-        {item.Visit}
-      </Text>
-    ),
-  }));
-
+  // const barData = last10Data.map(item => ({
+  //   value: Number(item.Visit) || 0,
+  //   label: String(item.MonthsName || ''),
+  //   frontColor: '#005696',
+  // }));
   const employeewiseRetailerVisitFrequency = async (businessID, idemp) => {
     const DashbourdRetailerVisitFrequencyurl =
       BASE_URL +
@@ -1240,43 +1822,49 @@ const CRMDashBoard = ({navigation}) => {
       const response = await axios.get(DashbourdRetailerVisitFrequencyurl);
       setRetailerDVisitFrequencyata(response.data);
     } catch (error) {
-      console.error('API error:', error);
+      traceApiError(
+        'RetailerVisitFrequency',
+        DashbourdRetailerVisitFrequencyurl,
+        error,
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const sortedRetailerData = [...RetailerVisitFrequency].sort(
-    (a, b) => Number(a.MonthsName) - Number(b.MonthsName),
-  );
+  const chartDataretailer = useMemo(() => {
+    const sortedRetailerData = [...RetailerVisitFrequency].sort(
+      (a, b) => Number(a.MonthsName) - Number(b.MonthsName),
+    );
 
-  const last10DataRe = sortedRetailerData.slice(-10);
-
-  const chartDataretailer = last10DataRe.map(item => ({
-    value: item.Visit,
-    label: item.MonthsName,
-    frontColor: '#005696',
-    gradientColor: '#d1c4e9',
-    topLabelComponent: () => (
-      <Text style={{color: '#005696', fontSize: 12, fontWeight: 'bold'}}>
-        {item.Visit}
-      </Text>
-    ),
-  }));
+    return sortedRetailerData.slice(-10).map(item => ({
+      value: Number(item.Visit) || 0,
+      label: String(item.MonthsName || ''),
+      frontColor: '#005696',
+      gradientColor: '#A9DDFA',
+      topLabelComponent: () => (
+        <Text style={styles.chartTopLabel}>{item.Visit}</Text>
+      ),
+    }));
+  }, [RetailerVisitFrequency]);
 
   // ✅ Separate method to fetch birthdays
-  const fetchBirthdays = businessId => {
+  const fetchBirthdays = async businessId => {
+    const endpoint = `${BASE_URL}Dashboard/UpcomingBirthday?Businessid=${businessId}`;
     setLoading(true);
-    fetch(`${BASE_URL}Dashboard/UpcomingBirthday?Businessid=${businessId}`)
-      .then(res => res.json())
-      .then(data => {
-        setBirthdays(data);
-        setLoading(false);
-      })
-      .catch(error => {
-        console.error(error);
-        setLoading(false);
-      });
+
+    try {
+      const response = await axiosGetWithRetry('UpcomingBirthday', endpoint);
+      const rows = Array.isArray(response.data)
+        ? response.data
+        : response.data?.data || [];
+
+      setBirthdays(Array.isArray(rows) ? rows : []);
+    } catch (error) {
+      traceApiError('UpcomingBirthday', endpoint, error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // ✅ Function to calculate days until birthday
@@ -1351,129 +1939,212 @@ const CRMDashBoard = ({navigation}) => {
   };
 
   // ✅ Separate method to fetch NoticeBoard
-  const fetchNoticeBoard = (businessId, divisionId) => {
-    const url = `${BASE_URL}Dashboard/NoticeBoard?Businessid=${businessId}&IDDivision=${divisionId}`;
-    console.log('🔗 NoticeBoard API URL:', url);
-
+  const fetchNoticeBoard = async (businessId, divisionId) => {
+    const endpoint = `${BASE_URL}Dashboard/NoticeBoard?Businessid=${businessId}&IDDivision=${divisionId}`;
+    console.log('🔗 NoticeBoard API URL:', endpoint);
     setLoading(true);
-    fetch(url)
-      .then(res => res.json())
-      .then(data => {
-        // console.log("📥 API Response:", data);
-        setNoticeBoard(data.data || []); // 👈 pick the array inside
-        setLoading(false);
-      })
 
-      .catch(error => {
-        console.error('❌ API Error:', error);
-        setLoading(false);
-      });
+    try {
+      const response = await axiosGetWithRetry('NoticeBoard', endpoint);
+      const rows = Array.isArray(response.data)
+        ? response.data
+        : response.data?.data || [];
+
+      setNoticeBoard(Array.isArray(rows) ? rows : []);
+    } catch (error) {
+      traceApiError('NoticeBoard', endpoint, error);
+    } finally {
+      setLoading(false);
+    }
   };
   // ✅ Separate method to fetch MyTeam Data
-  const fetchMyTeam = (businessId, Idemp) => {
-    const url = `${BASE_URL}Dashboard/MyTeam?Businessid=${businessId}&IDEmployee=${Idemp}`;
-    console.log('🔗 MyTeam API URL:', url);
+  const fetchMyTeam = async (businessId, Idemp) => {
+    const endpoint = `${BASE_URL}Dashboard/MyTeam?Businessid=${businessId}&IDEmployee=${Idemp}`;
+    console.log('🔗 MyTeam API URL:', endpoint);
     setLoading(true);
-    fetch(url)
-      .then(res => res.json())
-      .then(data => {
-        // console.log("📥 API Response:", data);
-        setMyTeam(data.data || []); // 👈 pick the array inside
-        setLoading(false);
-      })
-      .catch(error => {
-        console.error('❌ API Error:', error);
-        setLoading(false);
-      });
-  };
 
-  const fetchSaledata = async type => {
     try {
-      // setLoading(true);
-      // Prevent empty calls
-      if (!useEmpemail || !useDivision || !useDesignation || !useEmpNo) {
-        console.warn('⚠️ Missing required params, skipping API call');
-        return;
-      }
-      // ✅ User values
-      const Empemail = useEmpemail;
-      const Division = useDivision;
-      const Designation = useDesignation;
-      const Empno = useEmpNo;
+      const response = await axiosGetWithRetry('MyTeam', endpoint);
+      const rows = Array.isArray(response.data)
+        ? response.data
+        : response.data?.data || [];
 
-      // ✅ Transform Division
-      let finalDivision = Division;
-      if (Division === 'MCSO' || Division === 'MPPL') {
-        finalDivision = 'MAD';
-      }
-
-      // ✅ Transform Designation
-      let finalDesignation = Designation;
-      if (Designation === 'MFSO') {
-        finalDesignation = 'MSR-MFSO';
-      }
-
-      let url = '';
-
-      if (type === 'Monthly') {
-        url = `${Sales_URL}TargetAchieve?div=${finalDivision}&email=${Empemail}`;
-      } else {
-        url = `${Sales_URL}CumulativeSaleTarget?post=${finalDesignation}&empno=${Empno}`;
-      }
-
-      console.log('🔗 Fetching:', url);
-
-      // ✅ POST call with query params only
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-      });
-
-      const data = await response.json();
-      console.log(`📥 ${type} API Response:`, data);
-
-      if (type === 'Monthly') {
-        setSaleData({
-          achieved: data[0]?.SaleValue || 0,
-          target: data[0]?.TargetValue || 0,
-        });
-        setAchievement(
-          ((data[0]?.SaleValue / data[0]?.TargetValue) * 100).toFixed(0),
-        );
-      } else {
-        setSaleData({
-          achieved: data[0]?.CumulativeSalesvalue || 0,
-          target: data[0]?.CumulativeTargetsale || 0,
-        });
-        setAchievement(
-          (
-            (data[0]?.CumulativeSalesvalue / data[0]?.CumulativeTargetsale) *
-            100
-          ).toFixed(0),
-        );
-      }
+      setMyTeam(Array.isArray(rows) ? rows : []);
     } catch (error) {
-      console.error('❌ API Error:', error);
+      traceApiError('MyTeam', endpoint, error);
     } finally {
-      // setLoading(false);
+      setLoading(false);
     }
   };
 
+  const fetchSaledata = useCallback(
+    async type => {
+      let requestUrl = '';
+      try {
+        // Prevent empty calls
+        if (!useEmpemail || !useDivision || !useDesignation || !useEmpNo) {
+          console.warn('⚠️ Missing required params, skipping API call');
+          return;
+        }
+
+        // ✅ User values
+        const Empemail = useEmpemail;
+        const Division = useDivision;
+        const Designation = useDesignation;
+        const Empno = useEmpNo;
+
+        // ✅ Transform Division
+        let finalDivision = Division;
+        if (Division === 'MCSO' || Division === 'MPPL') {
+          finalDivision = 'MAD';
+        }
+
+        // ✅ Transform Designation
+        let finalDesignation = Designation;
+        if (Designation === 'MFSO') {
+          finalDesignation = 'MSR-MFSO';
+        }
+
+        if (type === 'Monthly') {
+          requestUrl = `${Sales_URL}TargetAchieve?div=${finalDivision}&email=${Empemail}`;
+        } else {
+          requestUrl = `${Sales_URL}CumulativeSaleTarget?post=${finalDesignation}&empno=${Empno}`;
+        }
+
+        console.log('🔗 Fetching:', requestUrl);
+        console.log('📤 Params:', {
+          finalDivision,
+          finalDesignation,
+          Empemail,
+          Empno,
+        });
+
+        // ✅ API Call
+        const response = await fetch(requestUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+
+        if (!response.ok) {
+          const body = await response.text();
+          const requestError = new Error(`HTTP ${response.status}`);
+          requestError.status = response.status;
+          requestError.data = body;
+          throw requestError;
+        }
+
+        const data = await response.json();
+        console.log(`📥 ${type} API Response:`, data);
+
+        // ❌ HANDLE EMPTY / INVALID RESPONSE
+        if (!data || !Array.isArray(data) || data.length === 0) {
+          console.warn(`⚠️ ${type} API returned empty`);
+
+          setSaleData({ achieved: 0, target: 0 });
+          setAchievement(0);
+          return;
+        }
+
+        const record = data[0];
+
+        // ✅ Extract values safely
+        let achieved = 0;
+        let target = 0;
+
+        if (type === 'Monthly') {
+          achieved = Number(record?.SaleValue || 0);
+          target = Number(record?.TargetValue || 0);
+        } else {
+          achieved = Number(record?.CumulativeSalesvalue || 0);
+          target = Number(record?.CumulativeTargetsale || 0);
+        }
+
+        // ✅ Safe percentage calculation (NO toFixed crash)
+        let percent = 0;
+        if (target > 0) {
+          percent = Math.round((achieved / target) * 100);
+        }
+
+        // ✅ Update state
+        setSaleData({ achieved, target });
+        setAchievement(percent);
+      } catch (error) {
+        traceApiError(`SalesData:${type}`, requestUrl, error);
+
+        // ✅ Fail-safe fallback (never crash UI)
+        setSaleData({ achieved: 0, target: 0 });
+        setAchievement(0);
+      } finally {
+        // setLoading(false);
+      }
+    },
+    [useDesignation, useDivision, useEmpNo, useEmpemail],
+  );
+
+  const handleSearch = text => {
+    setSearchQuery(text);
+  };
+
+  const filteredMyTeam = useMemo(() => {
+    const list = Array.isArray(myteam) ? myteam : [];
+    const query = String(searchQuery || '').trim().toLowerCase();
+
+    if (!query) {
+      return list;
+    }
+
+    return list.filter(item => {
+      const employeeNo = String(item?.EmployeeNo || '').toLowerCase();
+      const employeeName = String(item?.EmployeeName || '').toLowerCase();
+      const employeeDesg = String(item?.EmployeeDesg || '').toLowerCase();
+      const manager = String(item?.Manager || '').toLowerCase();
+      const phoneNo = String(item?.PhoneNo || '').toLowerCase();
+      const division = String(item?.Division || '').toLowerCase();
+
+      return (
+        employeeNo.includes(query) ||
+        employeeName.includes(query) ||
+        employeeDesg.includes(query) ||
+        manager.includes(query) ||
+        phoneNo.includes(query) ||
+        division.includes(query)
+      );
+    });
+  }, [myteam, searchQuery]);
+
   // ✅ PieChart Data
-  const pieData = saleData
-    ? [
-        {value: saleData.achieved, color: '#4CAF50', text: 'Achieved'},
+  const safeAchieved = Number(saleData?.achieved) || 0;
+  const safeTarget = Number(saleData?.target) || 0;
+
+  const remaining = Math.max(safeTarget - safeAchieved, 0);
+
+  // ✅ Avoid zero-total crash (important for pie charts)
+  const total = safeAchieved + remaining;
+
+  const pieData =
+    total > 0
+      ? [
         {
-          value: Math.max(saleData.target - saleData.achieved, 0),
+          value: safeAchieved,
+          color: '#4CAF50',
+          text: 'Achieved',
+        },
+        {
+          value: remaining,
           color: '#2E86DE',
           text: 'Remaining',
         },
       ]
-    : [];
-
+      : [
+        {
+          value: 1, // fallback dummy slice
+          color: '#E0E0E0',
+          text: 'No Data',
+        },
+      ];
   const dropdownOptions = [
-    {label: 'Monthly', value: 'Monthly'},
-    {label: 'Yearly', value: 'Yearly'},
+    { label: 'Monthly', value: 'Monthly' },
+    { label: 'Yearly', value: 'Yearly' },
   ];
   // suman jana code End here .
 
@@ -1527,7 +2198,7 @@ const CRMDashBoard = ({navigation}) => {
         }
       })
       .catch(function (error) {
-        Alert.alert(error);
+        console.log(error.message);
       });
   };
 
@@ -1575,7 +2246,7 @@ const CRMDashBoard = ({navigation}) => {
         }
       })
       .catch(function (error) {
-        Alert.alert(error);
+        console.log(error.message);
       });
   };
   const campaignData = (businessID, idemp) => {
@@ -1613,7 +2284,7 @@ const CRMDashBoard = ({navigation}) => {
         }
       })
       .catch(function (error) {
-        Alert.alert(error);
+        console.log(error.message);
       });
   };
   const campaignproductData = (businessID, idemp) => {
@@ -1651,7 +2322,7 @@ const CRMDashBoard = ({navigation}) => {
         }
       })
       .catch(function (error) {
-        Alert.alert(error);
+        console.log(error.message);
       });
   };
   const offlinePendingDCRDate = (businessID, idemp) => {
@@ -1690,7 +2361,7 @@ const CRMDashBoard = ({navigation}) => {
         }
       })
       .catch(function (error) {
-        Alert.alert(error);
+        console.log(error.message);
       });
   };
 
@@ -1778,7 +2449,7 @@ const CRMDashBoard = ({navigation}) => {
         }
       })
       .catch(function (error) {
-        Alert.alert(error);
+        console.log(error.message);
       });
   };
 
@@ -1801,7 +2472,7 @@ const CRMDashBoard = ({navigation}) => {
               //console.log('Table created successfully');
             },
             error => {
-              Alert.alert('Error creating table:', error);
+              console.log('Error creating table:', error);
             },
           );
         });
@@ -1820,7 +2491,7 @@ const CRMDashBoard = ({navigation}) => {
         }
       })
       .catch(function (error) {
-        Alert.alert(error);
+        console.log(error.message);
       });
   };
   const productGift = (businessID, idDiv) => {
@@ -1850,7 +2521,7 @@ const CRMDashBoard = ({navigation}) => {
               //console.log('Table created successfully');
             },
             error => {
-              Alert.alert('Error creating table:', error);
+              console.log('Error creating table:', error);
             },
           );
         });
@@ -1868,7 +2539,7 @@ const CRMDashBoard = ({navigation}) => {
         }
       })
       .catch(function (error) {
-        Alert.alert(error);
+        console.log(error.message);
       });
   };
   const productSample = (businessID, idDiv) => {
@@ -1898,7 +2569,7 @@ const CRMDashBoard = ({navigation}) => {
               //console.log('Table created successfully');
             },
             error => {
-              Alert.alert('Error creating table:', error);
+              console.log('Error creating table:', error);
             },
           );
         });
@@ -1917,7 +2588,7 @@ const CRMDashBoard = ({navigation}) => {
         }
       })
       .catch(function (error) {
-        Alert.alert(error);
+        console.log(error.message);
       });
   };
 
@@ -1941,7 +2612,7 @@ const CRMDashBoard = ({navigation}) => {
               //console.log('Table created successfully');
             },
             error => {
-              Alert.alert('Error creating table:', error);
+              console.log('Error creating table:', error);
             },
           );
         });
@@ -1959,7 +2630,90 @@ const CRMDashBoard = ({navigation}) => {
         }
       })
       .catch(function (error) {
-        Alert.alert(error);
+        console.log(error.message);
+      });
+  };
+  const getFrequencyDetail = async businessID => {
+    const finalurl =
+      BASE_URL + 'Misc/List?Businessid=' + businessID + '&Type=FREQUENCYTYPE';
+    console.log(finalurl);
+    var config = {
+      method: 'get',
+      url: finalurl,
+    };
+    axios(config)
+      .then(function (response) {
+        // console.log(JSON.stringify(response.data));
+        db.transaction(tx => {
+          tx.executeSql('DROP TABLE IF EXISTS CRM_frequencyList', []);
+          tx.executeSql(
+            'CREATE TABLE IF NOT EXISTS CRM_frequencyList(IDMisc INTEGER,Name VARCHAR)',
+            [],
+            (tx, results) => {
+              //console.log('Table created successfully');
+            },
+            error => {
+              console.log('Error creating table:', error);
+            },
+          );
+        });
+
+        //SQLITE INSERT CRM_finalStageList
+        var _value = [];
+        _value = response.data;
+        for (var i = 0; i < _value.length; i++) {
+          const array = _value[i];
+
+          let sql = 'INSERT INTO CRM_frequencyList(IDMisc,Name) VALUES (?,?)';
+          let params = [array.IDMisc, array.Name]; //storing user data in an array
+          db.executeSql(sql, params);
+          //console.log(params);
+        }
+      })
+      .catch(function (error) {
+        console.log(error.message);
+      });
+  };
+  const getConfigurationDetail = async businessID => {
+    const finalurl =
+      BASE_URL + 'Configuration/ConfigurationDetail?Businessid=' + businessID;
+    console.log(finalurl);
+    var config = {
+      method: 'get',
+      url: finalurl,
+    };
+    axios(config)
+      .then(function (response) {
+        // console.log(JSON.stringify(response.data));
+        db.transaction(tx => {
+          tx.executeSql('DROP TABLE IF EXISTS CRM_getConfigurationDetail', []);
+          tx.executeSql(
+            'CREATE TABLE IF NOT EXISTS CRM_getConfigurationDetail(ID INTEGER PRIMARY KEY AUTOINCREMENT,BackdatedReason INTEGER)',
+            [],
+            (tx, results) => {
+              //console.log('Table created successfully');
+            },
+            error => {
+              console.log('Error creating table:', error);
+            },
+          );
+        });
+
+        //SQLITE INSERT CRM_finalStageList
+        var _value = [];
+        _value = response.data;
+        for (var i = 0; i < _value.length; i++) {
+          const array = _value[i];
+
+          let sql =
+            'INSERT INTO CRM_getConfigurationDetail(BackdatedReason) VALUES (?)';
+          let params = [array.CKBAllowBackdatedEntryInDcr]; //storing user data in an array
+          db.executeSql(sql, params);
+          //console.log(params);
+        }
+      })
+      .catch(function (error) {
+        console.log(error.message);
       });
   };
 
@@ -2003,7 +2757,7 @@ const CRMDashBoard = ({navigation}) => {
         }
       })
       .catch(function (error) {
-        Alert.alert(error);
+        console.log(error.message);
       });
   };
   const specialityDDOpen = businessID => {
@@ -2045,7 +2799,7 @@ const CRMDashBoard = ({navigation}) => {
         }
       })
       .catch(function (error) {
-        console.log(error);
+        console.log(error.message);
       });
   };
   const categoryDDOpen = businessID => {
@@ -2069,7 +2823,7 @@ const CRMDashBoard = ({navigation}) => {
               //console.log('Table created successfully');
             },
             error => {
-              Alert.alert('Error creating table:', error);
+              console.log('Error creating table:', error);
             },
           );
         });
@@ -2086,7 +2840,7 @@ const CRMDashBoard = ({navigation}) => {
         }
       })
       .catch(function (error) {
-        Alert.alert(error);
+        console.log(error.message);
       });
   };
 
@@ -2117,7 +2871,7 @@ const CRMDashBoard = ({navigation}) => {
               //console.log('Table created successfully');
             },
             error => {
-              Alert.alert('Error creating table:', error);
+              console.log('Error creating table:', error);
             },
           );
         });
@@ -2135,7 +2889,7 @@ const CRMDashBoard = ({navigation}) => {
         }
       })
       .catch(function (error) {
-        Alert.alert(error);
+        console.log(error.message);
       });
   };
   const areaMaster = (businessID, empEmail, IDHQ) => {
@@ -2164,7 +2918,7 @@ const CRMDashBoard = ({navigation}) => {
               //console.log('Table created successfully');
             },
             error => {
-              Alert.alert('Error creating table:', error);
+              console.log('Error creating table:', error);
             },
           );
         });
@@ -2181,7 +2935,7 @@ const CRMDashBoard = ({navigation}) => {
         }
       })
       .catch(function (error) {
-        Alert.alert(error);
+        console.log(error.message);
       });
   };
 
@@ -2205,7 +2959,7 @@ const CRMDashBoard = ({navigation}) => {
               //console.log('Table created successfully');
             },
             error => {
-              Alert.alert('Error creating table:', error);
+              console.log('Error creating table:', error);
             },
           );
         });
@@ -2222,7 +2976,7 @@ const CRMDashBoard = ({navigation}) => {
         }
       })
       .catch(function (error) {
-        Alert.alert(error);
+        console.log(error.message);
       });
   };
 
@@ -2246,7 +3000,7 @@ const CRMDashBoard = ({navigation}) => {
               //console.log('Table created successfully');
             },
             error => {
-              Alert.alert('Error creating table:', error);
+              console.log('Error creating table:', error);
             },
           );
         });
@@ -2263,7 +3017,7 @@ const CRMDashBoard = ({navigation}) => {
         }
       })
       .catch(function (error) {
-        Alert.alert(error);
+        console.log(error.message);
       });
   };
   const managerEmployeeWiseOfflineAreaList = (businessID, IDEmployee) => {
@@ -2305,7 +3059,7 @@ const CRMDashBoard = ({navigation}) => {
         }
       })
       .catch(function (error) {
-        Alert.alert(error);
+        console.log(error.message);
       });
   };
   const managerEmployeeWiseOfflineDoctorList = (businessID, IDEmployee) => {
@@ -2357,7 +3111,7 @@ const CRMDashBoard = ({navigation}) => {
         }
       })
       .catch(function (error) {
-        Alert.alert(error);
+        console.log(error.message);
       });
   };
   const managerEmployeeWiseOfflineRetailerList = (businessID, IDEmployee) => {
@@ -2406,7 +3160,7 @@ const CRMDashBoard = ({navigation}) => {
         }
       })
       .catch(function (error) {
-        Alert.alert(error);
+        console.log(error.message);
       });
   };
   const orderBookingPrice = businessID => {
@@ -2438,7 +3192,7 @@ const CRMDashBoard = ({navigation}) => {
         }
       })
       .catch(function (error) {
-        Alert.alert(error);
+        console.log(error.message);
       });
   };
   const orderBookingBillingSeries = businessID => {
@@ -2470,7 +3224,7 @@ const CRMDashBoard = ({navigation}) => {
         }
       })
       .catch(function (error) {
-        Alert.alert(error);
+        console.log(error.message);
       });
   };
 
@@ -2513,7 +3267,7 @@ const CRMDashBoard = ({navigation}) => {
         //console.log(params);
       }
     } catch (error) {
-      Alert.alert(error);
+      console.log(error.message);
     }
   };
 
@@ -2546,7 +3300,7 @@ const CRMDashBoard = ({navigation}) => {
         }
       })
       .catch(function (error) {
-        Alert.alert(error);
+        console.log(error.message);
       });
   };
 
@@ -2635,7 +3389,7 @@ const CRMDashBoard = ({navigation}) => {
           }
         })
         .catch(function (error) {
-          Alert.alert(error);
+          console.log(error.message);
         });
     } else {
       const wturl =
@@ -2677,7 +3431,7 @@ const CRMDashBoard = ({navigation}) => {
           }
         })
         .catch(function (error) {
-          Alert.alert(error);
+          console.log(error.message);
         });
     }
   };
@@ -2726,7 +3480,7 @@ const CRMDashBoard = ({navigation}) => {
           }
         })
         .catch(function (error) {
-          Alert.alert(error);
+          console.log(error.message);
         });
     } else {
       const wturl =
@@ -2768,7 +3522,7 @@ const CRMDashBoard = ({navigation}) => {
           }
         })
         .catch(function (error) {
-          Alert.alert(error);
+          console.log(error.message);
         });
     }
   };
@@ -2817,7 +3571,7 @@ const CRMDashBoard = ({navigation}) => {
           }
         })
         .catch(function (error) {
-          Alert.alert(error);
+          console.log(error.message);
         });
     } else {
       const wturl =
@@ -2862,7 +3616,7 @@ const CRMDashBoard = ({navigation}) => {
           }
         })
         .catch(function (error) {
-          Alert.alert(error);
+          console.log(error.message);
         });
     }
   };
@@ -2904,15 +3658,17 @@ const CRMDashBoard = ({navigation}) => {
   };
 
   const fetchQuizModules = async (businessID, IDEmployee) => {
+    const apiUrl =
+      BASE_URL +
+      'user/MobileSubMenuList?Businessid=' +
+      businessID +
+      '&IDEmployee=' +
+      IDEmployee +
+      '&Module=SURVEY';
     try {
-      const url =
-        BASE_URL +
-        'user/MobileSubMenuList?Businessid=' +
-        businessID +
-        '&IDEmployee=' +
-        IDEmployee +
-        '&Module=SURVEY';
-      const response = await axios.get(url);
+      console.log(apiUrl);
+
+      const response = await axios.get(apiUrl);
       const dashBoardJsonArray = response.data;
       //CREATE TABLE for CRM_TourPlanDate
       db.transaction(txn => {
@@ -2935,20 +3691,22 @@ const CRMDashBoard = ({navigation}) => {
         db.executeSql(sql, params);
       }
     } catch (error) {
-      console.error('Failed to fetch modules:', error);
+      traceApiError('MobileSubMenuList:SURVEY', apiUrl, error);
     }
   };
 
   const fetchMasterModules = async (businessID, IDEmployee) => {
+    const apiUrl =
+      BASE_URL +
+      'user/MobileSubMenuList?Businessid=' +
+      businessID +
+      '&IDEmployee=' +
+      IDEmployee +
+      '&Module=MASTER';
     try {
-      const url =
-        BASE_URL +
-        'user/MobileSubMenuList?Businessid=' +
-        businessID +
-        '&IDEmployee=' +
-        IDEmployee +
-        '&Module=MASTER';
-      const response = await axios.get(url);
+      console.log(apiUrl);
+
+      const response = await axios.get(apiUrl);
       const dashBoardJsonArray = response.data;
       //CREATE TABLE for CRM_TourPlanDate
       db.transaction(txn => {
@@ -2971,20 +3729,22 @@ const CRMDashBoard = ({navigation}) => {
         db.executeSql(sql, params);
       }
     } catch (error) {
-      console.error('Failed to fetch modules:', error);
+      traceApiError('MobileSubMenuList:MASTER', apiUrl, error);
     }
   };
 
   const fetchDCRModules = async (businessID, IDEmployee) => {
+    const apiUrl =
+      BASE_URL +
+      'user/MobileSubMenuList?Businessid=' +
+      businessID +
+      '&IDEmployee=' +
+      IDEmployee +
+      '&Module=DCR';
     try {
-      const url =
-        BASE_URL +
-        'user/MobileSubMenuList?Businessid=' +
-        businessID +
-        '&IDEmployee=' +
-        IDEmployee +
-        '&Module=DCR';
-      const response = await axios.get(url);
+      console.log(apiUrl);
+
+      const response = await axios.get(apiUrl);
       const dashBoardJsonArray = response.data;
       //CREATE TABLE for CRM_TourPlanDate
       db.transaction(txn => {
@@ -3006,164 +3766,287 @@ const CRMDashBoard = ({navigation}) => {
         db.executeSql(sql, params);
       }
     } catch (error) {
-      console.error('Failed to fetch modules:', error);
+      traceApiError('MobileSubMenuList:DCR', apiUrl, error);
     }
   };
 
-  const checkDeviceExist = async (guid, bid) => {
+  // const fetchModules = (businessID, useDesig) => {
+  //   NetInfo.fetch().then(async state => {
+  //     if (state.isConnected) {
+  //       if (
+  //         useDesig !== 'DY_ZSM' &&
+  //         useDesig !== 'ZSM' &&
+  //         useDesig !== 'SR-ZSM'
+  //       ) {
+  //         try {
+  //           const url =
+  //             BASE_URL + 'user/MobileModuleList?Businessid=' + businessID;
+  //           const response = await axiosGetWithRetry(
+  //             'MobileModuleList:non-zsm',
+  //             url,
+  //           );
+  //           //setModules(response.data);
+  //           console.log('[MobileModuleList RESPONSE]', {
+  //             status: response.status,
+  //             isArray: Array.isArray(response.data),
+  //             count: Array.isArray(response.data) ? response.data.length : null,
+  //             firstItem: Array.isArray(response.data)
+  //               ? response.data[0]
+  //               : response.data,
+  //           });
+  //           setModules(Array.isArray(response.data) ? response.data : []);
+  //           console.log('if', url);
+  //           console.warn('if', url);
+  //           const dashBoardJsonArray = response.data;
+
+  //           //CREATE TABLE for CRM_TourPlanDate
+  //           db.transaction(txn => {
+  //             txn.executeSql('DROP TABLE IF EXISTS DashboardData', []);
+  //             txn.executeSql(
+  //               'CREATE TABLE IF NOT EXISTS DashboardData(Module VARCHAR,IDMenu VARCHAR,MainModuleSRL VARCHAR)',
+  //               [],
+  //             );
+  //           });
+
+  //           //SQLITE INSERT CRM_TourPlanDate
+  //           var _value = [];
+  //           _value = dashBoardJsonArray;
+  //           insertDashboardRows('MobileModuleList:non-zsm', url, _value);
+  //         } catch (error) {
+  //           traceApiError(
+  //             'MobileModuleList:non-zsm',
+  //             BASE_URL + 'user/MobileModuleList?Businessid=' + businessID,
+  //             error,
+  //           );
+  //         }
+  //       } else {
+  //         try {
+  //           const url =
+  //             BASE_URL + 'user/MobileModuleList?Businessid=' + businessID;
+  //           const response = await axiosGetWithRetry(
+  //             'MobileModuleList:zsm',
+  //             url,
+  //           );
+  //           //setModules(response.data);
+  //           console.log('[MobileModuleList RESPONSE]', {
+  //             status: response.status,
+  //             isArray: Array.isArray(response.data),
+  //             count: Array.isArray(response.data) ? response.data.length : null,
+  //             firstItem: Array.isArray(response.data)
+  //               ? response.data[0]
+  //               : response.data,
+  //           });
+  //           setModules(Array.isArray(response.data) ? response.data : []);
+  //           console.log('else', url);
+  //           console.warn('else', url);
+  //           const dashBoardJsonArray = response.data;
+
+  //           //CREATE TABLE for CRM_TourPlanDate
+  //           db.transaction(txn => {
+  //             txn.executeSql('DROP TABLE IF EXISTS DashboardData', []);
+  //             txn.executeSql(
+  //               'CREATE TABLE IF NOT EXISTS DashboardData(Module VARCHAR,IDMenu VARCHAR,MainModuleSRL VARCHAR)',
+  //               [],
+  //             );
+  //           });
+
+  //           //SQLITE INSERT CRM_TourPlanDate
+  //           var _value = [];
+  //           _value = dashBoardJsonArray;
+  //           insertDashboardRows('MobileModuleList:zsm', url, _value);
+  //         } catch (error) {
+  //           traceApiError(
+  //             'MobileModuleList:zsm',
+  //             BASE_URL + 'user/MobileModuleList?Businessid=' + businessID,
+  //             error,
+  //           );
+  //         }
+  //       }
+  //     } else {
+  //       if (
+  //         useDesig !== 'DY_ZSM' &&
+  //         useDesig !== 'ZSM' &&
+  //         useDesig !== 'SR-ZSM'
+  //       ) {
+  //         db.transaction(tx => {
+  //           tx.executeSql(
+  //             'SELECT Module, IDMenu, MainModuleSRL FROM DashboardData',
+  //             [],
+  //             (tx, results) => {
+  //               const rows = results.rows;
+  //               let temp = [];
+
+  //               for (let i = 0; i < rows.length; i++) {
+  //                 temp.push(rows.item(i));
+  //               }
+  //               console.log('Hi ' + temp);
+
+  //               setModules(temp);
+  //             },
+  //             error => {
+  //               console.log('Error fetching modules: ', error);
+  //             },
+  //           );
+  //         });
+  //       } else {
+  //         db.transaction(tx => {
+  //           tx.executeSql(
+  //             'SELECT Module, IDMenu, MainModuleSRL FROM DashboardData',
+  //             [],
+  //             (tx, results) => {
+  //               const rows = results.rows;
+  //               let temp = [];
+
+  //               for (let i = 0; i < rows.length; i++) {
+  //                 temp.push(rows.item(i));
+  //               }
+  //               console.log('Hello ' + temp);
+
+  //               setModules(temp);
+  //             },
+  //             error => {
+  //               console.log('Error fetching modules: ', error);
+  //             },
+  //           );
+  //         });
+  //       }
+  //     }
+  //   }, []);
+  // };
+
+  const loadModulesFromSQLite = () => {
+    return new Promise(resolve => {
+      db.transaction(tx => {
+        tx.executeSql(
+          'SELECT Module, IDMenu, MainModuleSRL FROM DashboardData',
+          [],
+          (tx, results) => {
+            const rows = results.rows;
+            let temp = [];
+
+            for (let i = 0; i < rows.length; i++) {
+              temp.push(rows.item(i));
+            }
+
+            resolve(temp);
+          },
+          error => {
+            console.log('Error fetching modules from SQLite:', error);
+            resolve([]);
+          },
+        );
+      });
+    });
+  };
+
+  const fetchModules = async (businessID, useDesig) => {
+    const isZsmUser =
+      useDesig === 'DY_ZSM' || useDesig === 'ZSM' || useDesig === 'SR-ZSM';
+
+    const apiLabel = isZsmUser
+      ? 'MobileModuleList:zsm'
+      : 'MobileModuleList:non-zsm';
+
+    const moduleUrl = BASE_URL + 'user/MobileModuleList?Businessid=' + businessID;
+
     try {
-      setLoading(true);
-      const url =
-        BASE_URL +
-        'Device/Registration/Exist?Businessid=' +
-        bid +
-        '&DeviceID=' +
-        guid;
-      console.log('Device ' + url);
+      const state = await NetInfo.fetch();
 
-      const response = await fetch(url);
+      // reset before trying
+      setModuleLoadMessage('');
 
-      const json = await response.json();
+      if (state.isConnected) {
+        try {
+          const response = await axiosGetWithRetry(apiLabel, moduleUrl);
 
-      // store "EXIST" in state
-      console.log(json.data);
-      //Alert.alert(json.data);
-      //console.log(json.data);
-      if (json.data === 'YES') {
-        ///navigation.navigate('LogIn');
+          console.log('[MobileModuleList RESPONSE]', {
+            status: response.status,
+            isArray: Array.isArray(response.data),
+            count: Array.isArray(response.data) ? response.data.length : null,
+            firstItem: Array.isArray(response.data)
+              ? response.data[0]
+              : response.data,
+          });
+
+          const moduleList = Array.isArray(response.data) ? response.data : [];
+
+          if (moduleList.length > 0) {
+            setModules(moduleList);
+            setIsPoorConnection(false);
+            setModuleLoadMessage('');
+
+            console.log(isZsmUser ? 'else' : 'if', moduleUrl);
+            console.warn(isZsmUser ? 'else' : 'if', moduleUrl);
+
+            db.transaction(txn => {
+              txn.executeSql('DROP TABLE IF EXISTS DashboardData', []);
+              txn.executeSql(
+                'CREATE TABLE IF NOT EXISTS DashboardData(Module VARCHAR,IDMenu VARCHAR,MainModuleSRL VARCHAR)',
+                [],
+              );
+            });
+
+            insertDashboardRows(apiLabel, moduleUrl, moduleList);
+          } else {
+            setModules([]);
+            setIsPoorConnection(true);
+            setModuleLoadMessage(
+              'Server not responding. Dashboard modules not loaded.',
+            );
+          }
+        } catch (error) {
+          traceApiError(apiLabel, moduleUrl, error);
+
+          // API failed, try old SQLite data
+          const sqliteModules = await loadModulesFromSQLite();
+
+          if (sqliteModules.length > 0) {
+            setModules(sqliteModules);
+            setIsPoorConnection(false);
+            setModuleLoadMessage('');
+          } else {
+            setModules([]);
+            setIsPoorConnection(true);
+            setModuleLoadMessage(
+              'Poor Internet connection! Module not loaded.',
+            );
+          }
+        }
       } else {
-        navigation.navigate('Register');
+        // offline, try SQLite
+        const sqliteModules = await loadModulesFromSQLite();
+
+        if (sqliteModules.length > 0) {
+          setModules(sqliteModules);
+          setIsPoorConnection(false);
+          setModuleLoadMessage('');
+        } else {
+          setModules([]);
+          setIsPoorConnection(false);
+          setModuleLoadMessage(
+            'No Internet connection! DashBoard not loaded.',
+          );
+        }
       }
     } catch (error) {
-      console.error('API Error:', error);
-    } finally {
-      setLoading(false);
+      console.log('fetchModules error:', error);
+
+      setModules([]);
+      setIsPoorConnection(true);
+      setModuleLoadMessage(
+        'DashBoard not loaded. Poor internet connection.',
+      );
     }
   };
-
-  const fetchModules = (businessID, useDesig) => {
-    NetInfo.fetch().then(async state => {
-      if (state.isConnected) {
-        if (useDesig !== 'DY_ZSM' && useDesig !== 'ZSM') {
-          try {
-            const url =
-              BASE_URL + 'user/MobileModuleList?Businessid=' + businessID;
-            const response = await axios.get(url);
-            setModules(response.data);
-            console.log('if', url);
-            console.warn('if', url);
-            const dashBoardJsonArray = response.data;
-
-            //CREATE TABLE for CRM_TourPlanDate
-            db.transaction(txn => {
-              txn.executeSql('DROP TABLE IF EXISTS DashboardData', []);
-              txn.executeSql(
-                'CREATE TABLE IF NOT EXISTS DashboardData(Module VARCHAR,IDMenu VARCHAR,MainModuleSRL VARCHAR)',
-                [],
-              );
-            });
-
-            //SQLITE INSERT CRM_TourPlanDate
-            var _value = [];
-            _value = dashBoardJsonArray;
-            //console.log(_value);
-            for (var j = 0; j < _value.length; j++) {
-              const array = _value[j];
-              let sql =
-                'INSERT INTO DashboardData(Module,IDMenu,MainModuleSRL) VALUES (?,?,?)';
-              let params = [array.Module, array.IDMenu, array.MainModuleSRL]; //storing user data in an array
-              db.executeSql(sql, params);
-            }
-          } catch (error) {
-            console.error('Failed to fetch modules: fetchModules', error);
-          }
-        } else {
-          try {
-            const url =
-              BASE_URL + 'user/MobileModuleList?Businessid=' + businessID;
-            const response = await axios.get(url);
-            setModules(response.data);
-            console.log('else', url);
-            console.warn('else', url);
-            const dashBoardJsonArray = response.data;
-
-            //CREATE TABLE for CRM_TourPlanDate
-            db.transaction(txn => {
-              txn.executeSql('DROP TABLE IF EXISTS DashboardData', []);
-              txn.executeSql(
-                'CREATE TABLE IF NOT EXISTS DashboardData(Module VARCHAR,IDMenu VARCHAR,MainModuleSRL VARCHAR)',
-                [],
-              );
-            });
-
-            //SQLITE INSERT CRM_TourPlanDate
-            var _value = [];
-            _value = dashBoardJsonArray;
-            //console.log(_value);
-            for (var j = 0; j < _value.length; j++) {
-              const array = _value[j];
-              let sql =
-                'INSERT INTO DashboardData(Module,IDMenu,MainModuleSRL) VALUES (?,?,?)';
-              let params = [array.Module, array.IDMenu, array.MainModuleSRL]; //storing user data in an array
-              db.executeSql(sql, params);
-            }
-          } catch (error) {
-            console.error('Failed to fetch modules:', error);
-          }
-        }
-      } else {
-        if (useDesig !== 'DY_ZSM' && useDesig !== 'ZSM') {
-          db.transaction(tx => {
-            tx.executeSql(
-              'SELECT Module, IDMenu, MainModuleSRL FROM DashboardData',
-              [],
-              (tx, results) => {
-                const rows = results.rows;
-                let temp = [];
-
-                for (let i = 0; i < rows.length; i++) {
-                  temp.push(rows.item(i));
-                }
-                console.log('Hi ' + temp);
-
-                setModules(temp);
-              },
-              error => {
-                console.log('Error fetching modules: ', error);
-              },
-            );
-          });
-        } else {
-          db.transaction(tx => {
-            tx.executeSql(
-              'SELECT Module, IDMenu, MainModuleSRL FROM DashboardData',
-              [],
-              (tx, results) => {
-                const rows = results.rows;
-                let temp = [];
-
-                for (let i = 0; i < rows.length; i++) {
-                  temp.push(rows.item(i));
-                }
-                console.log('Hello ' + temp);
-
-                setModules(temp);
-              },
-              error => {
-                console.log('Error fetching modules: ', error);
-              },
-            );
-          });
-        }
-      }
-    }, []);
-  };
-
   const checkCompanyValidation = async businessID => {
     try {
       const response = await fetch(
         BASE_URL + 'login/CheckCompanyValidation?Businessid=' + businessID,
       );
+      console.log(
+        BASE_URL + 'login/CheckCompanyValidation?Businessid=' + businessID,
+      );
+
       const data = await response.json();
 
       if (data.result === '') {
@@ -3175,7 +4058,7 @@ const CRMDashBoard = ({navigation}) => {
           navigation.navigate('LogIn');
           //setModalVisible(false);
         } catch (error) {
-          console.log(error);
+          console.log(error.message);
         }
       }
     } catch (error) {
@@ -3186,16 +4069,18 @@ const CRMDashBoard = ({navigation}) => {
   const checkStartDayCheck = async () => {
     const formattedDate = format(new Date(), 'yyyy-MM-dd');
     console.log(formattedDate); // "2025-10-03"
+    setLoading(true); // Show Loader
     try {
       const response = await fetch(
         BASE_URL +
-          'DCR/LockDCR/StartDayCheck/StayCheck/TourProgramList?Businessid=' +
-          useBusinessID +
-          '&IDEmployee=' +
-          useIDEmployee +
-          '&CurrentDate=' +
-          formattedDate,
+        'DCR/LockDCR/StartDayCheck/StayCheck/TourProgramList?Businessid=' +
+        useBusinessID +
+        '&IDEmployee=' +
+        useIDEmployee +
+        '&CurrentDate=' +
+        formattedDate,
       );
+      console.log('checkStartDayCheck', response.url);
       const json = await response.json();
       setData(json);
       console.log('StartDayCheck', json);
@@ -3206,6 +4091,33 @@ const CRMDashBoard = ({navigation}) => {
       const isStayCheckFalse = json.StayCheck === 'False';
       // ✅ Extract id
       const id = json?.StartDayCheck?.id;
+
+      db.transaction(tx => {
+        tx.executeSql(
+          `CREATE TABLE IF NOT EXISTS StartDayStatus (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      status TEXT
+    );`,
+          [],
+          () => console.log('Table created'),
+          error => console.log('Create table error', error),
+        );
+      });
+
+      const status = json?.StartDayCheck?.message; // STARTED or NOTSTARTED
+
+      db.transaction(tx => {
+        // Delete old value
+        tx.executeSql('DELETE FROM StartDayStatus');
+
+        // Insert latest value
+        tx.executeSql(
+          'INSERT INTO StartDayStatus (status) VALUES (?)',
+          [status],
+          () => console.log('Status saved'),
+          error => console.log('Insert error', error),
+        );
+      });
 
       // ✅ Store in AsyncStorage
       if (id) {
@@ -3222,7 +4134,7 @@ const CRMDashBoard = ({navigation}) => {
         Alert.alert(
           'LockDCR Info',
           `LockDCR: ${json.LockDCR}\nStartDayCheck: ${json?.StartDayCheck?.message}\nStayCheck: ${json.StayCheck}`,
-          [{text: 'OK'}],
+          [{ text: 'OK' }],
         );
       }
     } catch (error) {
@@ -3232,19 +4144,249 @@ const CRMDashBoard = ({navigation}) => {
     }
   };
 
-  const renderItem = ({item}) => (
-    <TouchableOpacity onPress={() => submit(item)}>
-      <View style={[styles.menu, {backgroundColor: '#ecf0f1'}]}>
-        <HomeImg
-          height={30}
-          width={30}
-          style={styles.imageDesign}
-          // style={{transform: [{rotate: '-5deg'}]}}
-        />
-        <Text style={styles.menuItem}>{item.Module}</Text>
+  const getModuleIcon = moduleName => {
+    const name = String(moduleName || '').toUpperCase().trim();
+
+    // Existing / known modules
+    if (name.includes('DCR')) return 'clipboard';
+    if (name.includes('TOUR')) return 'map-pin';
+    if (name.includes('DPC')) return 'file-text';
+    if (name.includes('ORDER')) return 'shopping-bag';
+    if (name.includes('EXPENSE')) return 'credit-card';
+    if (name.includes('REPORT')) return 'bar-chart-2';
+    if (name.includes('MASTER')) return 'database';
+    if (name.includes('SURVEY')) return 'check-square';
+    if (name.includes('SETTING')) return 'settings';
+    if (name.includes('LEAVE')) return 'calendar';
+    if (name.includes('SALES')) return 'trending-up';
+    if (name.includes('RECEIPT')) return 'file-plus';
+    if (name.includes('ACTIVITIES')) return 'zap';
+    if (name.includes('FACEBOOK')) return 'share-2';
+    if (name.includes('STOCK')) return 'box';
+
+    // Future module smart matching
+    if (
+      name.includes('ATTENDANCE') ||
+      name.includes('PRESENT') ||
+      name.includes('ABSENT') ||
+      name.includes('PUNCH') ||
+      name.includes('TIME')
+    ) {
+      return 'clock';
+    }
+
+    if (
+      name.includes('PAYROLL') ||
+      name.includes('SALARY') ||
+      name.includes('PAYSLIP') ||
+      name.includes('WAGES')
+    ) {
+      return 'dollar-sign';
+    }
+
+    if (
+      name.includes('APPROVAL') ||
+      name.includes('APPROVE') ||
+      name.includes('REQUEST') ||
+      name.includes('PENDING')
+    ) {
+      return 'check-circle';
+    }
+
+    if (
+      name.includes('EMPLOYEE') ||
+      name.includes('TEAM') ||
+      name.includes('STAFF') ||
+      name.includes('USER')
+    ) {
+      return 'users';
+    }
+
+    if (
+      name.includes('DOCTOR') ||
+      name.includes('CUSTOMER') ||
+      name.includes('CLIENT') ||
+      name.includes('PARTY') ||
+      name.includes('RETAILER')
+    ) {
+      return 'user-check';
+    }
+
+    if (
+      name.includes('VISITOR') ||
+      name.includes('GATE') ||
+      name.includes('ENTRY') ||
+      name.includes('CHECKIN') ||
+      name.includes('CHECK-IN')
+    ) {
+      return 'log-in';
+    }
+
+    if (
+      name.includes('CAMPAIGN') ||
+      name.includes('PROMOTION') ||
+      name.includes('MARKETING') ||
+      name.includes('NOTICE')
+    ) {
+      return 'send';
+    }
+
+    if (
+      name.includes('TRAINING') ||
+      name.includes('COURSE') ||
+      name.includes('LMS') ||
+      name.includes('LEARNING') ||
+      name.includes('QUIZ')
+    ) {
+      return 'book-open';
+    }
+
+    if (
+      name.includes('TARGET') ||
+      name.includes('GOAL') ||
+      name.includes('ACHIEVEMENT') ||
+      name.includes('PERFORMANCE') ||
+      name.includes('KPI') ||
+      name.includes('PMS')
+    ) {
+      return 'target';
+    }
+
+    if (
+      name.includes('INVENTORY') ||
+      name.includes('PRODUCT') ||
+      name.includes('ITEM') ||
+      name.includes('SAMPLE') ||
+      name.includes('GIFT')
+    ) {
+      return 'box';
+    }
+
+    if (
+      name.includes('LOCATION') ||
+      name.includes('AREA') ||
+      name.includes('HQ') ||
+      name.includes('MAP') ||
+      name.includes('GPS') ||
+      name.includes('GEO')
+    ) {
+      return 'map';
+    }
+
+    if (
+      name.includes('CHAT') ||
+      name.includes('MESSAGE') ||
+      name.includes('COMMUNICATION') ||
+      name.includes('SUPPORT')
+    ) {
+      return 'message-circle';
+    }
+
+    if (
+      name.includes('DOCUMENT') ||
+      name.includes('LETTER') ||
+      name.includes('FILE') ||
+      name.includes('FORM')
+    ) {
+      return 'file-text';
+    }
+
+    if (
+      name.includes('SECURITY') ||
+      name.includes('LOCK') ||
+      name.includes('PASSWORD') ||
+      name.includes('ACCESS')
+    ) {
+      return 'shield';
+    }
+
+    if (
+      name.includes('SYNC') ||
+      name.includes('UPLOAD') ||
+      name.includes('DOWNLOAD') ||
+      name.includes('BACKUP')
+    ) {
+      return 'refresh-cw';
+    }
+
+    if (
+      name.includes('ADMIN') ||
+      name.includes('CONFIG') ||
+      name.includes('CONTROL')
+    ) {
+      return 'sliders';
+    }
+
+    // Generic but still stable fallback for any future unknown module
+    return getFallbackModuleIcon(name);
+  };
+
+  const renderItem = ({ item }) => (
+    <TouchableOpacity
+      activeOpacity={0.86}
+      onPress={() => submit(item)}
+      style={styles.moduleCardWrap}>
+      <View style={styles.moduleCard}>
+        <View style={styles.moduleAccent} />
+
+        <View style={styles.moduleIconOuter}>
+          <View style={styles.moduleIconBox}>
+            <Feather
+              name={getModuleIcon(item.Module)}
+              size={20}
+              color="#005696"
+            />
+          </View>
+        </View>
+
+        <Text style={styles.moduleTitle} numberOfLines={2}>
+          {item.Module}
+        </Text>
+
+        <View style={styles.moduleFooter}>
+          <Text style={styles.moduleSubTitle}>Open</Text>
+          <Feather name="arrow-up-right" size={12} color="#67BC45" />
+        </View>
       </View>
     </TouchableOpacity>
   );
+
+  const checkStayTable = () => {
+    db.transaction(tx => {
+      tx.executeSql(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='Stay_Table'",
+        [],
+        (tx, results) => {
+          if (results.rows.length > 0) {
+            console.warn('Stay_Table exists');
+
+            tx.executeSql(
+              'SELECT * FROM Stay_Table WHERE StayDate=?',
+              [cdate],
+              (tx, results) => {
+                if (results.rows.length > 0) {
+                  Alert.alert(
+                    useEmpname + ' stay already exist on this date : ' + cdate,
+                  );
+                } else {
+                  chectTourPlanData();
+                }
+              },
+              (tx, error) => {
+                console.log(error);
+              },
+            );
+          } else {
+            console.warn('Stay_Table does not exist');
+            chectTourPlanData();
+          }
+        },
+        (tx, error) => {
+          console.log(error);
+        },
+      );
+    });
+  };
 
   const submit = async module => {
     switch (module.Module) {
@@ -3255,7 +4397,7 @@ const CRMDashBoard = ({navigation}) => {
             navigation.dispatch(
               CommonActions.reset({
                 index: 0,
-                routes: [{name: 'Tour Plan Submission'}], // or whatever your main screen is
+                routes: [{ name: 'Tour Plan Submission' }], // or whatever your main screen is
               }),
             );
           } else {
@@ -3270,169 +4412,309 @@ const CRMDashBoard = ({navigation}) => {
         });
         break;
       case 'DCR':
-        if (useMobileAccess === 'ONLINE') {
-          NetInfo.fetch().then(state => {
-            if (state.isConnected) {
-              if (useAdminAcess === true) {
-                navigation.dispatch(
-                  CommonActions.reset({
-                    index: 0,
-                    routes: [{name: 'DcrAdminDashBoard'}], // or whatever your main screen is
-                  }),
-                );
-              } else {
-                //checkDCRData();
-                checkStartDayCheck();
-              }
-              //checkStartDay();
-            } else {
-              Alert.alert('Contact With Administrator!');
-            }
-          }, []);
-        } else if (useMobileAccess === 'ONLINE & OFFLINE') {
-          NetInfo.fetch().then(state => {
-            if (state.isConnected) {
-              //checkStartDay();
-              if (useAdminAcess === true) {
-                //Alert.alert('Admin!');
-                navigation.dispatch(
-                  CommonActions.reset({
-                    index: 0,
-                    routes: [{name: 'DcrAdminDashBoard'}], // or whatever your main screen is
-                  }),
-                );
-              } else {
-                //checkDCRData();
-                checkStartDayCheck();
-              }
-            } else {
-              if (useAdminAcess === true) {
-                Alert.alert('No Internet Connection! Admin!');
-              } else {
-                if (useManagerAccess === true) {
-                  db.transaction(tx => {
-                    // Execute a query to retrieve table information
-                    tx.executeSql(
-                      "SELECT name FROM sqlite_master WHERE type='table' AND name='CRM_ManagerStartDayDummy'",
-                      [],
-                      (tx, results) => {
-                        // Check if any rows are returned
-                        if (results.rows.length > 0) {
-                          db.transaction(tx => {
-                            tx.executeSql(
-                              'SELECT * FROM CRM_ManagerStartDayDummy where StartDate=?',
-                              [cdate],
-                              (tx, results) => {
-                                // Check if there are rows in the result set
-                                if (results.rows.length > 0) {
-                                  console.log('Table has data');
-                                  navigation.dispatch(
-                                    CommonActions.reset({
-                                      index: 0,
-                                      routes: [{name: 'AppNavDCRScreen'}], // or whatever your main screen is
-                                    }),
-                                  );
-                                } else {
-                                  console.log('Table is empty');
-                                  Alert.alert(
-                                    'Start Your Day By Connecting Internet.',
-                                  );
-                                }
-                              },
-                              error =>
-                                console.error(
-                                  'Error executing SELECT query: ',
-                                  error,
-                                ),
-                            );
-                          });
-                        } else {
-                          Alert.alert('Start Your Day By Connecting Internet.');
-                        }
-                      },
-                      error => {
-                        // Error occurred while executing the query
-                        console.log(error);
-                      },
-                    );
-                  });
-                } else {
-                  // console.log(ctdate);
-                  db.transaction(tx => {
-                    tx.executeSql(
-                      // 'SELECT * FROM CRM_ManagerStartDay where StartDate=?',
-                      'SELECT * FROM CRM_offlinePendingDCRDate',
-                      [],
+        if (useAdminAcess === true) {
+          const formattedDate = format(new Date(), 'yyyy-MM-dd');
+          console.log(formattedDate); // "2025-10-03"
+          setLoading(true); // Show Loader
+          try {
+            const response = await fetch(
+              BASE_URL +
+              'DCR/LockDCR/StartDayCheck/StayCheck/TourProgramList?Businessid=' +
+              useBusinessID +
+              '&IDEmployee=' +
+              useIDEmployee +
+              '&CurrentDate=' +
+              formattedDate,
+            );
+            console.log('checkStartDayCheck', response.url);
+            const json = await response.json();
 
-                      (tx, results) => {
-                        // Check if there are rows in the result set
-                        if (results.rows.length > 0) {
-                          console.log('Table has data');
-                          Alert.alert(
-                            'Go to Reports and clear your pending DCR',
-                          );
-                        } else {
-                          console.log('Table is empty');
-                          db.transaction(tx => {
-                            // Execute a query to retrieve table information
-                            tx.executeSql(
-                              "SELECT name FROM sqlite_master WHERE type='table' AND name='Stay_Table'",
-                              [],
-                              (tx, results) => {
-                                // Check if any rows are returned
-                                if (results.rows.length > 0) {
-                                  // Table exists
-                                  console.warn('Stay_Table exists');
-                                  db.transaction(tx => {
-                                    tx.executeSql(
-                                      // 'SELECT * FROM CRM_ManagerStartDay where StartDate=?',
-                                      'SELECT * FROM Stay_Table where StayDate=?',
-                                      [cdate],
-                                      (tx, results) => {
-                                        // Check if there are rows in the result set
-                                        if (results.rows.length > 0) {
-                                          console.log('Table has data');
-                                          Alert.alert(
-                                            useEmpname +
-                                              ' stay already exist on this date : ' +
-                                              cdate,
+            const isLockDcrEmpty = json.LockDCR === '';
+            const isStartDayStarted =
+              json?.StartDayCheck?.message === 'STARTED';
+            const isNotStartDayStarted =
+              json?.StartDayCheck?.message === 'NOTSTARTED';
+            const isStayCheckFalse = json.StayCheck === 'False';
+
+            // ✅ Check all conditions
+            if (isLockDcrEmpty && isStartDayStarted && isStayCheckFalse) {
+              navigation.dispatch(
+                CommonActions.reset({
+                  index: 0,
+                  routes: [{ name: 'DcrAdminDashBoard' }], // or whatever your main screen is
+                }),
+              );
+            } else if (
+              isLockDcrEmpty &&
+              isNotStartDayStarted &&
+              isStayCheckFalse
+            ) {
+              navigation.navigate('DCR Session');
+            } else {
+              Alert.alert(
+                'LockDCR Info',
+                `LockDCR: ${json.LockDCR}\nStartDayCheck: ${json?.StartDayCheck?.message}\nStayCheck: ${json.StayCheck}`,
+                [{ text: 'OK' }],
+              );
+            }
+          } catch (error) {
+            console.error('Error fetching data:', error);
+          } finally {
+            setLoading(false);
+          }
+        } else {
+          if (useMobileAccess === 'ONLINE') {
+            NetInfo.fetch().then(state => {
+              if (state.isConnected) {
+                checkStartDayCheck();
+              } else {
+                Alert.alert('Contact With Administrator!');
+              }
+            }, []);
+          } else if (useMobileAccess === 'ONLINE & OFFLINE') {
+            NetInfo.fetch().then(state => {
+              if (state.isConnected) {
+                //checkStartDay();
+                checkStartDayCheck();
+              } else {
+                if (useAdminAcess === true) {
+                  Alert.alert('No Internet Connection! Admin!');
+                } else {
+                  if (useManagerAccess === true) {
+                    // db.transaction(tx => {
+                    //   // Execute a query to retrieve table information
+                    //   tx.executeSql(
+                    //     "SELECT name FROM sqlite_master WHERE type='table' AND name='CRM_ManagerStartDayDummy'",
+                    //     [],
+                    //     (tx, results) => {
+                    //       // Check if any rows are returned
+                    //       if (results.rows.length > 0) {
+                    //         db.transaction(tx => {
+                    //           tx.executeSql(
+                    //             'SELECT * FROM CRM_ManagerStartDayDummy where StartDate=?',
+                    //             [cdate],
+                    //             (tx, results) => {
+                    //               // Check if there are rows in the result set
+                    //               if (results.rows.length > 0) {
+                    //                 console.log('Table has data');
+                    //                 navigation.dispatch(
+                    //                   CommonActions.reset({
+                    //                     index: 0,
+                    //                     routes: [{name: 'AppNavDCRScreen'}], // or whatever your main screen is
+                    //                   }),
+                    //                 );
+                    //               } else {
+                    //                 console.log('Table is empty');
+                    //                 Alert.alert(
+                    //                   'Start Your Day By Connecting Internet.',
+                    //                 );
+                    //               }
+                    //             },
+                    //             error =>
+                    //               console.error(
+                    //                 'Error executing SELECT query: ',
+                    //                 error,
+                    //               ),
+                    //           );
+                    //         });
+                    //       } else {
+                    //         Alert.alert(
+                    //           'Start Your Day By Connecting Internet.',
+                    //         );
+                    //       }
+                    //     },
+                    //     error => {
+                    //       // Error occurred while executing the query
+                    //       console.log(error.message);
+                    //     },
+                    //   );
+                    // });
+
+                    db.transaction(tx => {
+                      tx.executeSql(
+                        'SELECT * FROM StartDayStatus LIMIT 1',
+                        [],
+                        (tx, results) => {
+                          if (results.rows.length > 0) {
+                            const status = results.rows.item(0).status;
+
+                            console.log('Offline Status:', status);
+
+                            if (status === 'STARTED') {
+                              navigation.dispatch(
+                                CommonActions.reset({
+                                  index: 0,
+                                  routes: [{ name: 'AppNavDCRScreen' }], // or whatever your main screen is
+                                }),
+                              );
+                            } else if (status === 'NOTSTARTED') {
+                              Alert.alert(
+                                'Start Your Day By Connecting Internet.',
+                              );
+                            }
+                          } else {
+                            Alert.alert('No offline data found');
+                          }
+                        },
+                        error => console.log(error),
+                      );
+                    });
+                  } else {
+                    console.log(ctdate);
+                    // db.transaction(tx => {
+                    //   tx.executeSql(
+                    //     // 'SELECT * FROM CRM_ManagerStartDay where StartDate=?',
+                    //     'SELECT * FROM CRM_offlinePendingDCRDate',
+                    //     [],
+
+                    //     (tx, results) => {
+                    //       // Check if there are rows in the result set
+                    //       if (results.rows.length > 0) {
+                    //         console.log('Table has data');
+                    //         Alert.alert(
+                    //           'Go to Reports and clear your pending DCR',
+                    //         );
+                    //       } else {
+                    //         console.log('Table is empty');
+                    //         db.transaction(tx => {
+                    //           // Execute a query to retrieve table information
+                    //           tx.executeSql(
+                    //             "SELECT name FROM sqlite_master WHERE type='table' AND name='Stay_Table'",
+                    //             [],
+                    //             (tx, results) => {
+                    //               // Check if any rows are returned
+                    //               if (results.rows.length > 0) {
+                    //                 // Table exists
+                    //                 console.warn('Stay_Table exists');
+                    //                 db.transaction(tx => {
+                    //                   tx.executeSql(
+                    //                     // 'SELECT * FROM CRM_ManagerStartDay where StartDate=?',
+                    //                     'SELECT * FROM Stay_Table where StayDate=?',
+                    //                     [cdate],
+                    //                     (tx, results) => {
+                    //                       // Check if there are rows in the result set
+                    //                       if (results.rows.length > 0) {
+                    //                         console.log('Table has data');
+                    //                         Alert.alert(
+                    //                           useEmpname +
+                    //                             ' stay already exist on this date : ' +
+                    //                             cdate,
+                    //                         );
+                    //                       } else {
+                    //                         console.log('Table is empty');
+                    //                         chectTourPlanData();
+                    //                       }
+                    //                     },
+                    //                     error =>
+                    //                       console.error(
+                    //                         'Error executing SELECT query: ',
+                    //                         error,
+                    //                       ),
+                    //                   );
+                    //                 });
+                    //               } else {
+                    //                 // Table does not exist
+                    //                 console.warn('Stay_Table does not exists');
+                    //                 chectTourPlanData();
+                    //               }
+                    //             },
+                    //             error => {
+                    //               // Error occurred while executing the query
+                    //               console.log(error.message);
+                    //             },
+                    //           );
+                    //         });
+                    //       }
+                    //     },
+                    //     error =>
+                    //       console.error(
+                    //         'Error executing SELECT query: ',
+                    //         error,
+                    //       ),
+                    //   );
+                    // });
+                    db.transaction(tx => {
+                      tx.executeSql(
+                        'SELECT * FROM StartDayStatus LIMIT 1',
+                        [],
+                        (tx, results) => {
+                          if (results.rows.length > 0) {
+                            const status = results.rows.item(0).status;
+
+                            console.log('Offline Status:', status);
+
+                            if (status === 'STARTED') {
+                              navigation.dispatch(
+                                CommonActions.reset({
+                                  index: 0,
+                                  routes: [{ name: 'AppNavDCRScreen' }], // or whatever your main screen is
+                                }),
+                              );
+                            } else {
+                              db.transaction(tx => {
+                                // First check whether the table exists
+                                tx.executeSql(
+                                  "SELECT name FROM sqlite_master WHERE type='table' AND name='CRM_offlinePendingDCRDate'",
+                                  [],
+                                  (tx, tableResult) => {
+                                    if (tableResult.rows.length > 0) {
+                                      console.log(
+                                        'CRM_offlinePendingDCRDate table exists',
+                                      );
+
+                                      // Table exists, now check data
+                                      tx.executeSql(
+                                        'SELECT * FROM CRM_offlinePendingDCRDate',
+                                        [],
+                                        (tx, results) => {
+                                          if (results.rows.length > 0) {
+                                            console.log('Pending DCR found');
+
+                                            Alert.alert(
+                                              'Go to Reports and clear your pending DCR',
+                                            );
+                                          } else {
+                                            console.log('No pending DCR');
+
+                                            checkStayTable();
+                                          }
+                                        },
+                                        (tx, error) => {
+                                          console.log(
+                                            'Error reading CRM_offlinePendingDCRDate',
+                                            error,
                                           );
-                                        } else {
-                                          console.log('Table is empty');
-                                          chectTourPlanData();
-                                        }
-                                      },
-                                      error =>
-                                        console.error(
-                                          'Error executing SELECT query: ',
-                                          error,
-                                        ),
-                                    );
-                                  });
-                                } else {
-                                  // Table does not exist
-                                  console.warn('Stay_Table does not exists');
-                                  chectTourPlanData();
-                                }
-                              },
-                              error => {
-                                // Error occurred while executing the query
-                                Alert.alert(error);
-                              },
-                            );
-                          });
-                        }
-                      },
-                      error =>
-                        console.error('Error executing SELECT query: ', error),
-                    );
-                  });
+                                        },
+                                      );
+                                    } else {
+                                      console.log(
+                                        'CRM_offlinePendingDCRDate table does not exist',
+                                      );
+
+                                      // Treat as no pending DCR
+                                      checkStayTable();
+                                    }
+                                  },
+                                  (tx, error) => {
+                                    console.log(error);
+                                  },
+                                );
+                              });
+                            }
+                          } else {
+                            Alert.alert('No offline data found');
+                          }
+                        },
+                        error => console.log(error),
+                      );
+                    });
+                  }
                 }
               }
-            }
-          }, []);
-        } else {
-          Alert.alert('Contact With Administrator!');
+            }, []);
+          } else {
+            Alert.alert('Contact With Administrator!');
+          }
         }
         break;
       case 'SETTING':
@@ -3442,7 +4724,7 @@ const CRMDashBoard = ({navigation}) => {
             navigation.dispatch(
               CommonActions.reset({
                 index: 0,
-                routes: [{name: 'SettingScreen'}], // or whatever your main screen is
+                routes: [{ name: 'SettingScreen' }], // or whatever your main screen is
                 //routes: [{name: 'RX-Survey'}], // or whatever your main screen is
               }),
             );
@@ -3456,6 +4738,7 @@ const CRMDashBoard = ({navigation}) => {
             // );
           }
         });
+        //navigation.navigate('Test GPS');
         break;
       case 'MASTER':
         if (useManagerAccess === true) {
@@ -3478,7 +4761,7 @@ const CRMDashBoard = ({navigation}) => {
               navigation.dispatch(
                 CommonActions.reset({
                   index: 0,
-                  routes: [{name: 'AppNavMaster'}], // or whatever your main screen is
+                  routes: [{ name: 'AppNavMaster' }], // or whatever your main screen is
                 }),
               );
             } else {
@@ -3486,7 +4769,7 @@ const CRMDashBoard = ({navigation}) => {
               navigation.dispatch(
                 CommonActions.reset({
                   index: 0,
-                  routes: [{name: 'AppNavMaster'}], // or whatever your main screen is
+                  routes: [{ name: 'AppNavMaster' }], // or whatever your main screen is
                 }),
               );
             }
@@ -3496,67 +4779,21 @@ const CRMDashBoard = ({navigation}) => {
       case 'REPORTS':
         NetInfo.fetch().then(state => {
           if (state.isConnected) {
-            //const base = 'https://iecrm.iecsl.in/Login/MobileWebAccess';
-            //const base = 'https://crmdemoui.iecsl.in/Login/MobileWebAccess';
             const base = 'https://iecrmpharma.iecsl.in/Login/MobileWebAccess';
-
             const url = `${base}?BusinessID=${useBusinessID}&email=${useEmpemail}&securitykey=${useSecurityKey}`;
             console.log(url);
 
             Linking.openURL(url).catch(err =>
               console.error('An error occurred', err),
             );
-            // navigation.dispatch(
-            //   CommonActions.reset({
-            //     index: 0,
-            //     routes: [
-            //       {
-            //         name: 'ReportsWebView',
-            //         params: {url},
-            //       },
-            //     ],
-            //   }),
-            // );
+            
           } else {
             Alert.alert('Internet Is Required!');
-            // navigation.dispatch(
-            //   CommonActions.reset({
-            //     index: 0,
-            //     routes: [{name: 'AppNavScreen'}], // or whatever your main screen is
-            //   }),
-            // );
+            
           }
         });
-        // if (useBusinessID.trim() === 'MEND-PVTL-890') {
-        //         const url =
-        //           'https://crmfieldforceui.mendine.co.in/Login/MobileWebAccess?BusinessID=' +
-        //           useBusinessID +
-        //           '&email=' +
-        //           useEmpemail +
-        //           '&securitykey=' +
-        //           useSecurityKey;
-        //         console.log(url);
-
-        //         Linking.openURL(url).catch(err =>
-        //           console.error('An error occurred', err),
-        //         );
-        //       } else {
-        //         const url =
-        //           'https://iecrm.iecsl.in/Login/MobileWebAccess?BusinessID=' +
-        //           useBusinessID +
-        //           '&email=' +
-        //           useEmpemail +
-        //           '&securitykey=' +
-        //           useSecurityKey;
-        //         console.log(url);
-
-        //         Linking.openURL(url).catch(err =>
-        //           console.error('An error occurred', err),
-        //         );
-        //       }
-
         break;
-      case 'ORDER':
+        case 'ORDER':
         setLoading(true);
         setTimeout(() => setLoading(false), 5000);
 
@@ -3572,27 +4809,28 @@ const CRMDashBoard = ({navigation}) => {
               navigation.dispatch(
                 CommonActions.reset({
                   index: 0,
-                  routes: [{name: 'AppNavOrder'}], // or whatever your main screen is
+                  routes: [{ name: 'AppNavOrder' }], // or whatever your main screen is
                 }),
               );
             } else {
               navigation.dispatch(
                 CommonActions.reset({
                   index: 0,
-                  routes: [{name: 'AppNavOrder'}], // or whatever your main screen is
+                  routes: [{ name: 'AppNavOrder' }], // or whatever your main screen is
                 }),
               );
             }
           });
         }
         break;
+      //case 'ACTIVITIES':
       case 'ACTIVITIES':
         if (useBusinessID.trim() === 'GENI-QST-536') {
           Alert.alert('You are not authorized to access the module');
           navigation.dispatch(
             CommonActions.reset({
               index: 0,
-              routes: [{name: 'AppNavScreen'}], // or whatever your main screen is
+              routes: [{ name: 'AppNavScreen' }], // or whatever your main screen is
             }),
           );
         } else if (useBusinessID.trim() === 'DEV-GENI-536') {
@@ -3610,7 +4848,7 @@ const CRMDashBoard = ({navigation}) => {
                 navigation.dispatch(
                   CommonActions.reset({
                     index: 0,
-                    routes: [{name: 'AppNavActivity'}], // or whatever your main screen is
+                    routes: [{ name: 'AppNavActivity' }], // or whatever your main screen is
                   }),
                 );
               } else {
@@ -3650,7 +4888,7 @@ const CRMDashBoard = ({navigation}) => {
               navigation.dispatch(
                 CommonActions.reset({
                   index: 0,
-                  routes: [{name: 'AppNavQuiz'}], // or whatever your main screen is
+                  routes: [{ name: 'AppNavQuiz' }], // or whatever your main screen is
                 }),
               );
             } else {
@@ -3675,14 +4913,14 @@ const CRMDashBoard = ({navigation}) => {
             navigation.dispatch(
               CommonActions.reset({
                 index: 0,
-                routes: [{name: 'AppNavExpense'}], // or whatever your main screen is
+                routes: [{ name: 'AppNavExpense' }], // or whatever your main screen is
               }),
             );
           } else {
             navigation.dispatch(
               CommonActions.reset({
                 index: 0,
-                routes: [{name: 'AppNavExpense'}], // or whatever your main screen is
+                routes: [{ name: 'AppNavExpense' }], // or whatever your main screen is
               }),
             );
           }
@@ -3732,7 +4970,7 @@ const CRMDashBoard = ({navigation}) => {
                         navigation.dispatch(
                           CommonActions.reset({
                             index: 0,
-                            routes: [{name: 'Secondary Closing Stock Entry'}], // or whatever your main screen is
+                            routes: [{ name: 'Secondary Closing Stock Entry' }], // or whatever your main screen is
                           }),
                         );
                       } else {
@@ -3756,7 +4994,7 @@ const CRMDashBoard = ({navigation}) => {
               }
             });
           } catch (error) {
-            Alert.alert(error);
+            console.log(error.message);
           }
         });
         break;
@@ -3810,14 +5048,14 @@ const CRMDashBoard = ({navigation}) => {
                   navigation.dispatch(
                     CommonActions.reset({
                       index: 0,
-                      routes: [{name: 'ADMIN SALES REPORT'}],
+                      routes: [{ name: 'ADMIN_MAIN_SALES_REPORT' }],
                     }),
                   );
                 } else {
                   navigation.dispatch(
                     CommonActions.reset({
                       index: 0,
-                      routes: [{name: 'SALES REPORT'}],
+                      routes: [{ name: 'SALES REPORT' }],
                     }),
                   );
                 }
@@ -3871,7 +5109,7 @@ const CRMDashBoard = ({navigation}) => {
         navigation.dispatch(
           CommonActions.reset({
             index: 0,
-            routes: [{name: 'approvalDashboard'}], // or whatever your main screen is
+            routes: [{ name: 'approvalDashboard' }], // or whatever your main screen is
           }),
         );
         // navigation.dispatch(
@@ -3888,7 +5126,7 @@ const CRMDashBoard = ({navigation}) => {
             navigation.dispatch(
               CommonActions.reset({
                 index: 0,
-                routes: [{name: 'FacebookPromotion'}], // or whatever your main screen is
+                routes: [{ name: 'FacebookPromotion' }], // or whatever your main screen is
                 //routes: [{name: 'RX-Survey'}], // or whatever your main screen is
               }),
             );
@@ -3897,34 +5135,57 @@ const CRMDashBoard = ({navigation}) => {
           }
         });
         break;
-
+      case 'RECEIPT':
+        NetInfo.fetch().then(state => {
+          if (state.isConnected) {
+            setLoading(true);
+            setTimeout(() => {
+              setLoading(false);
+            }, 5000);
+            navigation.dispatch(
+              CommonActions.reset({
+                index: 0,
+                routes: [{ name: 'AppNavReceipt' }], // or whatever your main screen is
+              }),
+            );
+          } else {
+            // navigation.dispatch(
+            //   CommonActions.reset({
+            //     index: 0,
+            //     routes: [{name: 'AppNavExpense'}], // or whatever your main screen is
+            //   }),
+            // );
+            Alert.alert('Connect Internet!');
+          }
+        });
+        break;
       default:
         Alert.alert('Working On');
     }
   };
 
-  const BirthdayRenderItem = ({item}) => {
+  const BirthdayRenderItem = ({ item }) => {
     // 🔹 Find closest 3 birthdays (sorted)
     const topThree = birthdays
       .map(b => ({
         ...b,
         daysLeft:
           new Date(new Date(b.DOB).setFullYear(new Date().getFullYear())) <
-          new Date()
+            new Date()
             ? Math.ceil(
-                (new Date(
-                  new Date(b.DOB).setFullYear(new Date().getFullYear() + 1),
-                ) -
-                  new Date()) /
-                  (1000 * 60 * 60 * 24),
-              )
+              (new Date(
+                new Date(b.DOB).setFullYear(new Date().getFullYear() + 1),
+              ) -
+                new Date()) /
+              (1000 * 60 * 60 * 24),
+            )
             : Math.ceil(
-                (new Date(
-                  new Date(b.DOB).setFullYear(new Date().getFullYear()),
-                ) -
-                  new Date()) /
-                  (1000 * 60 * 60 * 24),
-              ),
+              (new Date(
+                new Date(b.DOB).setFullYear(new Date().getFullYear()),
+              ) -
+                new Date()) /
+              (1000 * 60 * 60 * 24),
+            ),
       }))
       .sort((a, b) => a.daysLeft - b.daysLeft)
       .slice(0, 3);
@@ -3942,12 +5203,12 @@ const CRMDashBoard = ({navigation}) => {
         <View style={styles.cardContentBirthday}>
           {item.ProfilePicPath ? (
             <Image
-              source={{uri: `${url}/${item.ProfilePicPath}`}}
+              source={{ uri: `${url}/${item.ProfilePicPath}` }}
               style={styles.avatar}
               resizeMode="cover"
             />
           ) : (
-            <Ionicons name="person-circle-outline" size={60} color="#ccc" />
+            <Ionicons name="person-circle-outline" size={50} color="#ccc" />
           )}
 
           <View style={styles.infobirthday}>
@@ -3966,7 +5227,7 @@ const CRMDashBoard = ({navigation}) => {
               </Text>
             </View>
 
-            <Text style={styles.detail}>
+            <Text style={styles.detailsBirthday}>
               {item.Designation} • {item.Division}
             </Text>
             <Text style={styles.dob}>🎂 {item.FormattedDOB}</Text>
@@ -3998,30 +5259,43 @@ const CRMDashBoard = ({navigation}) => {
     );
   };
 
-  const NoticeBoardRenderItem = ({item}) => {
-    return (
-      <View style={styles.noticeCard}>
-        {/* Card Content */}
-        <View style={styles.cardContent}>
-          {/* Left Icon */}
-          <Ionicons
-            name="paper-plane-outline"
-            size={40}
-            color="#3b82f6"
-            style={{marginRight: 12}}
-          />
+  const NoticeBoardRenderItem = ({ item }) => {
+    const imageUrl = item.NoticeImage
+      ? encodeURI(`${url}/${item.NoticeImage.replace(/\\/g, '/')}`)
+      : null;
 
-          {/* Info Section */}
-          <View style={styles.noticeInfo}>
-            <Text style={{fontSize: 14, fontWeight: 'bold', color: '#222222'}}>
+    return (
+      <View style={styles.corporateNoticeCard}>
+        {imageUrl && (
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => {
+              setNoticeUrl(imageUrl);
+              setVisible(true);
+            }}>
+            <Image
+              source={{ uri: imageUrl }}
+              style={styles.corporateNoticeImage}
+              resizeMode="cover"
+            />
+          </TouchableOpacity>
+        )}
+
+        <View style={styles.corporateNoticeBody}>
+          <View style={styles.corporateNoticeIcon}>
+            <Ionicons name="paper-plane-outline" size={22} color="#005696" />
+          </View>
+
+          <View style={{ flex: 1 }}>
+            <Text style={styles.corporateNoticeTitle} numberOfLines={1}>
               {item.ShortNotice}
             </Text>
-            <Text
-              style={{fontSize: 13, color: '#555555', marginVertical: 4}}
-              numberOfLines={2}>
+
+            <Text style={styles.corporateNoticeText} numberOfLines={2}>
               {item.LongNotice}
             </Text>
-            <Text style={{fontSize: 13, color: '#3b82f6', fontWeight: '600'}}>
+
+            <Text style={styles.corporateNoticeMeta} numberOfLines={1}>
               {item.NoticeDate} • By {item.Employee}
             </Text>
           </View>
@@ -4031,10 +5305,951 @@ const CRMDashBoard = ({navigation}) => {
   };
 
   // ✅ Get paginated data
-  const paginatedData = myteam.slice(
-    currentPage * itemsPerPage,
-    (currentPage + 1) * itemsPerPage,
+  //const paginatedData = myteam.slice(
+  const paginatedData = useMemo(() => {
+    return filteredMyTeam.slice(
+      currentPage * itemsPerPage,
+      (currentPage + 1) * itemsPerPage,
+    );
+  }, [filteredMyTeam, currentPage, itemsPerPage]);
+
+
+  const renderTeamRow = useCallback(
+    ({ item }) => (
+      <View style={styles.corporateTableRow}>
+        <Text style={[styles.corporateCell, { width: 105 }]}>
+          {item.EmployeeNo}
+        </Text>
+
+        <View style={[styles.corporateNameCell, { width: 175 }]}>
+          <View
+            style={[
+              styles.statusDot,
+              {
+                backgroundColor:
+                  Number(item.StartDay) === 1 ? '#22C55E' : '#EF4444',
+              },
+            ]}
+          />
+
+          <Text style={styles.corporateNameText} numberOfLines={2}>
+            {item.EmployeeName}
+          </Text>
+        </View>
+
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => openPhoneModal(item)}
+          style={[styles.corporateCell, { width: 130 }]}>
+          <Text style={styles.corporatePhoneText}>{item.PhoneNo}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => openVisitDetailsModal(item)}
+          style={[styles.corporateCell, { width: 120 }]}>
+          <View style={styles.corporateViewBtn}>
+            <Text style={styles.corporateViewBtnText}>View</Text>
+          </View>
+        </TouchableOpacity>
+
+        <Text style={[styles.corporateCell, { width: 105 }]}>
+          {item.Division}
+        </Text>
+
+        <Text style={[styles.corporateCell, { width: 145 }]} numberOfLines={2}>
+          {item.EmployeeDesg}
+        </Text>
+
+        <Text style={[styles.corporateCell, { width: 170 }]} numberOfLines={2}>
+          {item.Manager}
+        </Text>
+      </View>
+    ),
+    [openPhoneModal, openVisitDetailsModal],
   );
+
+  // const openVisitDetailsModal = async item => {
+  //   if (!netState?.isConnected) {
+  //     Alert.alert('No Internet', 'Please check your internet connection.');
+  //     return; // Stop execution completely
+  //   }
+  //   if (!item?.IDEmployee) return;
+  //   const selectedEmployeeId = String(item?.IDEmployee || '').trim();
+  //   const loggedInEmployeeId = useIDEmployee ; 
+  //   console.log('Selected Employee ID:', selectedEmployeeId);
+  //   console.log('Logged In Employee ID:', useIDEmployee);
+  //   // 🔒 Access Control Logic
+  //   if (!useManagerAccess) {
+  //     if (selectedEmployeeId !== useIDEmployee) {
+  //       Alert.alert(
+  //         'Access Denied',
+  //         "You are not authorized to view other employees' visit details.",
+  //       );
+  //       //console.log('Access Denied: Not authorized to view other employees.');
+  //       return; // Stop execution
+  //     }
+  //   }
+
+  //   setSelectedEmp(item);
+  //   setVisitDetailsModalVisible(true);
+  //   setLoadingVisitDetails(true);
+
+  //   try {
+  //     const url = `${BASE_URL}Dashboard/EmployeeReport?Businessid=${useBusinessID}&IDEmployee=${item.IDEmployee}`;
+  //     console.log('Fetching visit details from:', url);
+  //     const response = await fetch(url);
+  //     if (!response.ok) {
+  //       const body = await response.text();
+  //       const requestError = new Error(`HTTP ${response.status}`);
+  //       requestError.status = response.status;
+  //       requestError.data = body;
+  //       throw requestError;
+  //     }
+  //     const json = await response.json();
+  //     //console.log('Raw API Response:', json);
+  //     const isValidResponse =
+  //       json &&
+  //       typeof json === 'object' &&
+  //       (json.WorkDetails || json.ReportCount);
+  //     if (!isValidResponse) {
+  //       throw new Error('Invalid API response structure');
+  //     }
+  //     if (isValidResponse) {
+  //       setVisitReport(json.WorkDetails || []);
+  //       setReportCount(json.ReportCount?.[0] || null);
+  //     }
+  //     //console.log('Visit details fetched successfully:', json);
+  //   } catch (error) {
+  //     traceApiError(
+  //       'EmployeeReport',
+  //       `${BASE_URL}Dashboard/EmployeeReport?Businessid=${useBusinessID}&IDEmployee=${item.IDEmployee}`,
+  //       error,
+  //     );
+  //   } finally {
+  //     setLoadingVisitDetails(false);
+  //   }
+  // };
+
+
+  const openVisitDetailsModal = async item => {
+    try {
+      if (!netState?.isConnected) {
+        Alert.alert('No Internet', 'Please check your internet connection.');
+        return;
+      }
+
+      if (!item?.IDEmployee) {
+        Alert.alert('Error', 'Employee ID not found.');
+        return;
+      }
+
+      // ===============================
+      // 1. Read logged-in user fallback
+      // ===============================
+      let loggedUser = null;
+
+      try {
+        const storedUser = await AsyncStorage.getItem('UserData');
+        loggedUser = storedUser ? JSON.parse(storedUser) : null;
+      } catch (error) {
+        console.log('UserData read error:', error);
+      }
+
+      // ===============================
+      // 2. Prepare selected employee
+      // ===============================
+      const selectedEmployeeId = Number(item?.IDEmployee || 0);
+      const selectedEmployeeNo = String(item?.EmployeeNo || '').trim();
+
+      // ===============================
+      // 3. Prepare logged-in employee
+      // ===============================
+      const loggedInEmployeeId = Number(
+        useIDEmployee || loggedUser?.IDEmployee || 0,
+      );
+
+      const loggedInEmployeeNo = String(
+        useEmpNo || loggedUser?.Empno || '',
+      ).trim();
+
+      // ===============================
+      // 4. Prepare manager access
+      // ===============================
+      const managerAccessValue =
+        useManagerAccess !== '' &&
+          useManagerAccess !== null &&
+          useManagerAccess !== undefined
+          ? useManagerAccess
+          : loggedUser?.ManagerAccess;
+
+      const isManager =
+        managerAccessValue === true ||
+        managerAccessValue === 'true' ||
+        managerAccessValue === 'True' ||
+        managerAccessValue === 1 ||
+        managerAccessValue === '1';
+
+      // ===============================
+      // 5. Own user check
+      // ===============================
+      const isOwnEmployee =
+        selectedEmployeeId === loggedInEmployeeId ||
+        selectedEmployeeNo === loggedInEmployeeNo;
+
+      console.log('VISIT ACCESS CHECK:', {
+        selectedEmployeeId,
+        loggedInEmployeeId,
+        selectedEmployeeNo,
+        loggedInEmployeeNo,
+        managerAccessValue,
+        isManager,
+        isOwnEmployee,
+        selectedEmployeeIdType: typeof selectedEmployeeId,
+        loggedInEmployeeIdType: typeof loggedInEmployeeId,
+      });
+
+      // ===============================
+      // 6. Access control
+      // Manager can see all.
+      // Normal user can see only own data.
+      // ===============================
+      if (!isManager && !isOwnEmployee) {
+        Alert.alert(
+          'Access Denied',
+          "You are not authorized to view other employees' visit details.",
+        );
+        return;
+      }
+
+      // ===============================
+      // 7. Prepare Business ID
+      // ===============================
+      let businessId = String(useBusinessID || '').trim();
+
+      if (!businessId) {
+        businessId = String(loggedUser?.BusinessID || '').trim();
+
+        if (businessId) {
+          setBusinessID(businessId);
+        }
+      }
+
+      if (!businessId) {
+        Alert.alert(
+          'Error',
+          'Business ID not found. Please logout and login again.',
+        );
+        return;
+      }
+
+      // Optional: update missing states again
+      if (!useIDEmployee && loggedUser?.IDEmployee) {
+        setIDEmployee(loggedUser.IDEmployee);
+      }
+
+      if (!useEmpNo && loggedUser?.Empno) {
+        setEmpNo(loggedUser.Empno);
+      }
+
+      if (
+        (useManagerAccess === '' ||
+          useManagerAccess === null ||
+          useManagerAccess === undefined) &&
+        loggedUser?.ManagerAccess !== undefined
+      ) {
+        setuseManagerAccess(loggedUser.ManagerAccess);
+      }
+
+      // ===============================
+      // 8. Open modal and call API
+      // ===============================
+      setSelectedEmp(item);
+      setVisitDetailsModalVisible(true);
+      setLoadingVisitDetails(true);
+
+      const requestUrl = `${BASE_URL}Dashboard/EmployeeReport?Businessid=${businessId}&IDEmployee=${selectedEmployeeId}`;
+
+      console.log('Fetching visit details from:', requestUrl);
+
+      const response = await fetch(requestUrl);
+
+      if (!response.ok) {
+        const body = await response.text();
+        const requestError = new Error(`HTTP ${response.status}`);
+        requestError.status = response.status;
+        requestError.data = body;
+        throw requestError;
+      }
+
+      const json = await response.json();
+
+      const isValidResponse =
+        json &&
+        typeof json === 'object' &&
+        (json.WorkDetails || json.ReportCount);
+
+      if (!isValidResponse) {
+        throw new Error('Invalid API response structure');
+      }
+
+      setVisitReport(Array.isArray(json.WorkDetails) ? json.WorkDetails : []);
+      setReportCount(
+        Array.isArray(json.ReportCount) && json.ReportCount.length > 0
+          ? json.ReportCount[0]
+          : null,
+      );
+
+      console.log('Visit details loaded successfully');
+    } catch (error) {
+      traceApiError(
+        'EmployeeReport',
+        `${BASE_URL}Dashboard/EmployeeReport`,
+        error,
+      );
+
+      Alert.alert('Error', 'Unable to load visit details.');
+    } finally {
+      setLoadingVisitDetails(false);
+    }
+  };
+
+
+
+  const MIME_XLSX =
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+  const buildVisitWorkbookBase64 = () => {
+    const today = new Date();
+    const generatedOn = today.toLocaleString();
+
+    // 🔹 Sheet Data Structure
+    const sheetData = [];
+
+    // Company Header
+    sheetData.push(['ie.CRM Visit Report']);
+    sheetData.push([]);
+
+    // Employee & Summary Info
+    sheetData.push(['Employee Name', selectedEmp?.EmployeeName || '']);
+    sheetData.push(['Generated On', generatedOn]);
+    sheetData.push(['Doctor Count', reportCount?.DoctorCount || 0]);
+    sheetData.push(['Retailer Count', reportCount?.RetailerCount || 0]);
+    sheetData.push([]);
+
+    // Table Header
+    sheetData.push([
+      'SRL',
+      'Employee No',
+      'Employee Name',
+      'Area',
+      'Customer Name',
+      'Visit Time',
+      'Latitude',
+      'Longitude',
+    ]);
+
+    // Table Rows
+    visitReport.forEach(item => {
+      sheetData.push([
+        item.SRL,
+        item.Employeeno,
+        item.EmployeeName,
+        item.Area,
+        item.CustomerName,
+        item.VisitTime,
+        item.DoctorLat,
+        item.DoctorLong,
+      ]);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(sheetData);
+
+    // 🔹 Column Width Auto Adjustment
+    ws['!cols'] = [
+      { wch: 6 },
+      { wch: 15 },
+      { wch: 20 },
+      { wch: 18 },
+      { wch: 28 },
+      { wch: 22 },
+      { wch: 15 },
+      { wch: 15 },
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Visit Report');
+
+    return XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
+  };
+
+  const shareVisitExcel = async () => {
+    try {
+      if (!visitReport?.length) {
+        Alert.alert('No Data', 'There is no visit data to export.');
+        return;
+      }
+
+      const b64 = buildVisitWorkbookBase64();
+      const fileName = `VisitReport_${selectedEmp?.EmployeeName
+        }_${Date.now()}.xlsx`;
+      const cachePath = `${RNFS.CachesDirectoryPath}/${fileName}`;
+
+      await RNFS.writeFile(cachePath, b64, 'base64');
+
+      const exists = await RNFS.exists(cachePath);
+      if (!exists) throw new Error('File not created');
+
+      const fileUrl =
+        Platform.OS === 'android' ? `file://${cachePath}` : cachePath;
+
+      try {
+        await Share.open({
+          url: fileUrl,
+          type: MIME_XLSX,
+          filename: fileName,
+          failOnCancel: false,
+          showAppsToView: true,
+          saveToFiles: true,
+        });
+      } catch (shareErr) {
+        if (Platform.OS === 'android') {
+          await RNBlobUtil.android.actionViewIntent(cachePath, MIME_XLSX);
+        } else {
+          throw shareErr;
+        }
+      }
+    } catch (e) {
+      console.error('Visit Excel Share Error:', e);
+      Alert.alert('Error', 'Failed to share Excel file');
+    }
+  };
+
+  const cleanText = value => {
+    if (value === null || value === undefined) return '';
+
+    return String(value)
+      .replace(/\u202F/g, ' ') // Narrow no-break space
+      .replace(/\u00A0/g, ' ') // Non-breaking space
+      .replace(/[^\x00-\xFF]/g, '') // Remove unsupported Unicode
+      .replace(/[\u0000-\u001F]/g, '') // Remove control chars
+      .trim();
+  };
+
+  const shareVisitPDF = async () => {
+    try {
+      if (!visitReport?.length) {
+        Alert.alert('No Data', 'There is no visit data to export.');
+        return;
+      }
+
+      const pdfDoc = await PDFDocument.create();
+
+      const pageWidth = 842;
+      const pageHeight = 595;
+      const margin = 40;
+
+      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+      let page = pdfDoc.addPage([pageWidth, pageHeight]);
+      let y = pageHeight - margin;
+
+      // ================= HEADER =================
+
+      page.drawText('ie.CRM Visit Report', {
+        x: margin,
+        y,
+        size: 18,
+        font: boldFont,
+        color: rgb(0.05, 0.47, 0.47),
+      });
+
+      y -= 28;
+
+      page.drawText('Employee Name: ' + cleanText(selectedEmp?.EmployeeName), {
+        x: margin,
+        y,
+        size: 11,
+        font,
+      });
+
+      y -= 15;
+
+      page.drawText(
+        'Employee No: ' + cleanText(selectedEmp?.Employeeno || useEmpNo),
+        { x: margin, y, size: 11, font },
+      );
+
+      y -= 15;
+
+      page.drawText('Division: ' + cleanText(useDivision), {
+        x: margin,
+        y,
+        size: 11,
+        font,
+      });
+
+      y -= 15;
+
+      page.drawText('Designation: ' + cleanText(useDesignation), {
+        x: margin,
+        y,
+        size: 11,
+        font,
+      });
+
+      y -= 15;
+
+      page.drawText('Headquarter: ' + cleanText(useHq), {
+        x: margin,
+        y,
+        size: 11,
+        font,
+      });
+
+      y -= 20;
+
+      page.drawText(
+        'Doctor Count: ' +
+        cleanText(reportCount?.DoctorCount) +
+        ' | Retailer Count: ' +
+        cleanText(reportCount?.RetailerCount) +
+        ' | Missed Call: ' +
+        cleanText(reportCount?.RetailerMissedcallCount) +
+        ' | RCPA Count: ' +
+        cleanText(reportCount?.RCPACount),
+        { x: margin, y, size: 11, font: boldFont },
+      );
+
+      y -= 35;
+
+      // ================= TABLE CONFIG =================
+
+      const columns = [
+        { label: 'SRL', width: 60 },
+        { label: 'Area', width: 220 },
+        { label: 'Customer', width: 330 },
+        { label: 'Visit Time', width: 170 },
+      ];
+
+      const wrapText = (text, maxWidth, fontSize = 9) => {
+        const words = cleanText(text).split(' ');
+        let lines = [];
+        let currentLine = '';
+
+        words.forEach(word => {
+          const testLine = currentLine + word + ' ';
+          const width = font.widthOfTextAtSize(testLine, fontSize);
+
+          if (width > maxWidth - 12) {
+            lines.push(currentLine);
+            currentLine = word + ' ';
+          } else {
+            currentLine = testLine;
+          }
+        });
+
+        lines.push(currentLine);
+        return lines;
+      };
+
+      const drawHeaderRow = () => {
+        let x = margin;
+
+        columns.forEach(col => {
+          page.drawRectangle({
+            x,
+            y: y - 22,
+            width: col.width,
+            height: 28,
+            borderWidth: 1,
+            borderColor: rgb(0.6, 0.6, 0.6),
+            color: rgb(0.94, 0.97, 0.99),
+          });
+
+          page.drawText(col.label, {
+            x: x + 10,
+            y: y - 16,
+            size: 11,
+            font: boldFont,
+          });
+
+          x += col.width;
+        });
+
+        y -= 30;
+      };
+
+      drawHeaderRow();
+
+      // ================= ROWS =================
+
+      for (let item of visitReport) {
+        const isEvenRow = item.SRL % 2 === 0;
+
+        const rowData = [
+          cleanText(item.SRL),
+          cleanText((item.Area || '').replace(/\+/g, ', ')),
+          cleanText(item.CustomerName),
+          cleanText(item.VisitTime),
+        ];
+
+        let wrappedData = [];
+        let rowHeight = 0;
+
+        rowData.forEach((cell, index) => {
+          const lines = wrapText(cell, columns[index].width);
+          wrappedData.push(lines);
+          rowHeight = Math.max(rowHeight, lines.length * 12 + 12);
+        });
+
+        if (y - rowHeight < margin) {
+          page = pdfDoc.addPage([pageWidth, pageHeight]);
+          y = pageHeight - margin;
+          drawHeaderRow();
+        }
+
+        let x = margin;
+
+        wrappedData.forEach((lines, colIndex) => {
+          page.drawRectangle({
+            x,
+            y: y - rowHeight,
+            width: columns[colIndex].width,
+            height: rowHeight,
+            borderWidth: 1,
+            borderColor: rgb(0.85, 0.85, 0.85),
+            color: isEvenRow ? rgb(0.97, 0.98, 0.99) : undefined,
+          });
+
+          const lineHeight = 12;
+          const textBlockHeight = lines.length * lineHeight;
+
+          const startY = y - rowHeight / 2 + textBlockHeight / 2 - 6;
+
+          lines.forEach((line, lineIndex) => {
+            page.drawText(line.trim(), {
+              x: x + 10,
+              y: startY - lineIndex * lineHeight,
+              size: 9,
+              font,
+            });
+          });
+
+          x += columns[colIndex].width;
+        });
+
+        y -= rowHeight + 6;
+      }
+
+      // ================= FOOTER =================
+
+      const pages = pdfDoc.getPages();
+      const totalPages = pages.length;
+
+      const safeDate = cleanText(new Date().toLocaleString());
+
+      pages.forEach((p, index) => {
+        p.drawText(`Page ${index + 1} of ${totalPages}`, {
+          x: pageWidth - 140,
+          y: 20,
+          size: 8,
+          font,
+        });
+
+        p.drawText('Generated on: ' + safeDate, {
+          x: margin,
+          y: 20,
+          size: 8,
+          font,
+        });
+      });
+
+      const pdfBytes = await pdfDoc.save();
+      const pdfBase64 = Buffer.from(pdfBytes).toString('base64');
+
+      const fileName = `VisitReport_${Date.now()}.pdf`;
+      const filePath = `${RNFS.CachesDirectoryPath}/${fileName}`;
+
+      await RNFS.writeFile(filePath, pdfBase64, 'base64');
+
+      const fileUrl =
+        Platform.OS === 'android' ? `file://${filePath}` : filePath;
+
+      await Share.open({
+        url: fileUrl,
+        type: 'application/pdf',
+        filename: fileName,
+        failOnCancel: false,
+      });
+    } catch (error) {
+      console.log('PDF generation error:', error);
+      Alert.alert('Error', 'Failed to generate PDF.');
+    }
+  };
+
+  // const shareVisitPDF = async () => {
+  //   try {
+  //     if (!visitReport?.length) {
+  //       Alert.alert('No Data', 'There is no visit data to export.');
+  //       return;
+  //     }
+
+  //     const pdfDoc = await PDFDocument.create();
+
+  //     const pageWidth = 842; // A4 Landscape
+  //     const pageHeight = 595;
+  //     const margin = 40;
+
+  //     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  //     const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+  //     let page = pdfDoc.addPage([pageWidth, pageHeight]);
+  //     let y = pageHeight - margin;
+
+  //     // ================= HEADER =================
+
+  //     page.drawText('ie.CRM Visit Report', {
+  //       x: margin,
+  //       y,
+  //       size: 18,
+  //       font: boldFont,
+  //       color: rgb(0.05, 0.47, 0.47),
+  //     });
+
+  //     y -= 28;
+
+  //     page.drawText(`Employee Name: ${selectedEmp?.EmployeeName || ''}`, {
+  //       x: margin,
+  //       y,
+  //       size: 11,
+  //       font,
+  //     });
+
+  //     y -= 15;
+
+  //     page.drawText(`Employee No: ${selectedEmp?.Employeeno || useEmpNo}`, {
+  //       x: margin,
+  //       y,
+  //       size: 11,
+  //       font,
+  //     });
+
+  //     y -= 15;
+
+  //     page.drawText(`Division: ${useDivision || ''}`, {
+  //       x: margin,
+  //       y,
+  //       size: 11,
+  //       font,
+  //     });
+
+  //     y -= 15;
+
+  //     page.drawText(`Designation: ${useDesignation || ''}`, {
+  //       x: margin,
+  //       y,
+  //       size: 11,
+  //       font,
+  //     });
+
+  //     y -= 15;
+
+  //     page.drawText(`Headquarter: ${useHq || ''}`, {
+  //       x: margin,
+  //       y,
+  //       size: 11,
+  //       font,
+  //     });
+
+  //     y -= 20;
+
+  //     page.drawText(
+  //       `Doctor Count: ${reportCount?.DoctorCount || 0}   |   Retailer Count: ${reportCount?.RetailerCount || 0
+  //       }`,
+  //       {
+  //         x: margin,
+  //         y,
+  //         size: 11,
+  //         font: boldFont,
+  //       }
+  //     );
+
+  //     y -= 35;
+
+  //     // ================= TABLE CONFIG =================
+
+  //     const columns = [
+  //       { label: 'SRL', width: 60 },
+  //       { label: 'Area', width: 220 },
+  //       { label: 'Customer', width: 330 },
+  //       { label: 'Visit Time', width: 170 },
+  //     ];
+
+  //     const wrapText = (text, maxWidth, fontSize = 9) => {
+  //       const words = text.split(' ');
+  //       let lines = [];
+  //       let currentLine = '';
+
+  //       words.forEach(word => {
+  //         const testLine = currentLine + word + ' ';
+  //         const width = font.widthOfTextAtSize(testLine, fontSize);
+  //         if (width > maxWidth - 12) {
+  //           lines.push(currentLine);
+  //           currentLine = word + ' ';
+  //         } else {
+  //           currentLine = testLine;
+  //         }
+  //       });
+
+  //       lines.push(currentLine);
+  //       return lines;
+  //     };
+
+  //     const drawHeaderRow = () => {
+  //       let x = margin;
+
+  //       columns.forEach(col => {
+  //         page.drawRectangle({
+  //           x,
+  //           y: y - 22,
+  //           width: col.width,
+  //           height: 28,
+  //           borderWidth: 1,
+  //           borderColor: rgb(0.6, 0.6, 0.6),
+  //           color: rgb(0.94, 0.97, 0.99),
+  //         });
+
+  //         page.drawText(col.label, {
+  //           x: x + 10,
+  //           y: y - 16,
+  //           size: 11,
+  //           font: boldFont,
+  //         });
+
+  //         x += col.width;
+  //       });
+
+  //       y -= 30;
+  //     };
+
+  //     drawHeaderRow();
+
+  //     // ================= ROWS =================
+
+  //     for (let item of visitReport) {
+  //       const isEvenRow = item.SRL % 2 === 0;
+
+  //       const rowData = [
+  //         String(item.SRL || ''),
+  //         (item.Area || '').replace(/\+/g, ', '),
+  //         item.CustomerName || '',
+  //         item.VisitTime || '',
+  //       ];
+
+  //       let wrappedData = [];
+  //       let rowHeight = 0;
+
+  //       rowData.forEach((cell, index) => {
+  //         const lines = wrapText(String(cell), columns[index].width);
+  //         wrappedData.push(lines);
+  //         rowHeight = Math.max(rowHeight, lines.length * 12 + 12);
+  //       });
+
+  //       if (y - rowHeight < margin) {
+  //         page = pdfDoc.addPage([pageWidth, pageHeight]);
+  //         y = pageHeight - margin;
+  //         drawHeaderRow();
+  //       }
+
+  //       let x = margin;
+
+  //       wrappedData.forEach((lines, colIndex) => {
+  //         page.drawRectangle({
+  //           x,
+  //           y: y - rowHeight,
+  //           width: columns[colIndex].width,
+  //           height: rowHeight,
+  //           borderWidth: 1,
+  //           borderColor: rgb(0.85, 0.85, 0.85),
+  //           color: isEvenRow ? rgb(0.97, 0.98, 0.99) : undefined,
+  //         });
+
+  //         const lineHeight = 12;
+  //         const textBlockHeight = lines.length * lineHeight;
+
+  //         // ✅ PERFECT VERTICAL CENTERING
+  //         const startY =
+  //           y - (rowHeight / 2) + (textBlockHeight / 2) - 6;
+
+  //         lines.forEach((line, lineIndex) => {
+  //           page.drawText(line.trim(), {
+  //             x: x + 10,
+  //             y: startY - lineIndex * lineHeight,
+  //             size: 9,
+  //             font,
+  //           });
+  //         });
+
+  //         x += columns[colIndex].width;
+  //       });
+
+  //       y -= rowHeight + 6;
+  //     }
+
+  //     // ================= FOOTER =================
+
+  //     const pages = pdfDoc.getPages();
+  //     const totalPages = pages.length;
+
+  //     pages.forEach((p, index) => {
+  //       p.drawText(
+  //         `Page ${index + 1} of ${totalPages}`,
+  //         {
+  //           x: pageWidth - 140,
+  //           y: 20,
+  //           size: 8,
+  //           font,
+  //         }
+  //       );
+
+  //       p.drawText(
+  //         `Generated on: ${new Date().toLocaleString()}`,
+  //         {
+  //           x: margin,
+  //           y: 20,
+  //           size: 8,
+  //           font,
+  //         }
+  //       );
+  //     });
+
+  //     // ================= SAVE =================
+
+  //     const pdfBytes = await pdfDoc.save();
+  //     const pdfBase64 = Buffer.from(pdfBytes).toString('base64');
+
+  //     const fileName = `VisitReport_${Date.now()}.pdf`;
+  //     const filePath = `${RNFS.CachesDirectoryPath}/${fileName}`;
+
+  //     await RNFS.writeFile(filePath, pdfBase64, 'base64');
+
+  //     const fileUrl =
+  //       Platform.OS === 'android' ? `file://${filePath}` : filePath;
+
+  //     await Share.open({
+  //       url: fileUrl,
+  //       type: 'application/pdf',
+  //       filename: fileName,
+  //       failOnCancel: false,
+  //     });
+
+  //   } catch (error) {
+  //     console.log('PDF generation error:', error);
+  //     Alert.alert('Error', 'Failed to generate PDF.');
+  //   }
+  // };
 
   const openPhoneModal = item => {
     console.log('Selected item:', selectedEmp);
@@ -4109,12 +6324,145 @@ const CRMDashBoard = ({navigation}) => {
           source={require('../assets/Loading sand clock.json')}
           autoPlay
           loop
-          style={{width: 150, height: 150}}
+          style={{ width: 150, height: 150 }}
         />
         <Text style={styles.loaderText1}>Loading Dashboard...</Text>
       </View>
     );
   }
+
+  const getIDYearIncentive = async businessID => {
+    const turl =
+      BASE_URL + 'Incentive/Configuration/Year?Businessid=' + businessID;
+    console.log('turl', turl);
+    var config = {
+      method: 'get',
+      url: turl,
+    };
+    axios(config)
+      .then(function (response) {
+        var count = Object.keys(response.data).length;
+        let wtNameArray = [];
+        for (var i = 0; i < count; i++) {
+          wtNameArray.push({
+            //value: response.data[i].Value,
+            value: response.data[i].IDYear,
+            label: response.data[i].Code,
+          });
+        }
+        setIDyear(wtNameArray);
+      })
+      .catch(function (error) {
+        console.log(error.message);
+      });
+  };
+  const getIDQuarterIncentive = async IDyear => {
+    const turl =
+      BASE_URL +
+      'Incentive/Quarter/List?Businessid=' +
+      useBusinessID +
+      '&IDYear=' +
+      IDyear;
+    console.log(turl);
+    var config = {
+      method: 'get',
+      url: turl,
+    };
+    axios
+      .get(turl)
+      .then(response => {
+        const wtNameArray = response.data.data.map(item => ({
+          value: item.IDQuarter,
+          label: item.Name,
+        }));
+
+        setIDQuarter(wtNameArray);
+      })
+      .catch(function (error) {
+        Alert.alert('Error', error.message);
+      });
+  };
+
+  const getIncentiveData = IDQuarter => {
+    const url =
+      BASE_URL +
+      'Incentive/Mppl/Incentive/Register?Businessid=' +
+      useBusinessID +
+      '&EmpNo=' +
+      useEmpNo +
+      '&IDYear=' +
+      useIDyearvalue +
+      '&IDQuarter=' +
+      IDQuarter;
+
+    console.log(url);
+
+    axios.get(url).then(res => {
+      const headers = res.data.data.Headers;
+      const productList = res.data.data.Products;
+
+      if (headers.length === 0 && productList.length === 0) {
+        setDataFound(false);
+        setProducts([]);
+      } else {
+        setDataFound(true);
+        setTotalAmount(headers[0].TotalIncAmount);
+        setProducts(productList);
+      }
+    });
+  };
+
+  const CorporateSection = ({
+    title,
+    subtitle,
+    icon,
+    actionText,
+    onActionPress,
+    children,
+    style,
+  }) => (
+    <View style={[styles.corporateSectionCard, style]}>
+      <View style={styles.corporateSectionHeader}>
+        <View style={styles.corporateSectionTitleWrap}>
+          <View style={styles.corporateSectionIconBox}>
+            <Feather name={icon} size={17} color="#005696" />
+          </View>
+
+          <View style={{ flex: 1 }}>
+            <Text style={styles.corporateSectionTitle}>{title}</Text>
+            {!!subtitle && (
+              <Text style={styles.corporateSectionSubtitle}>{subtitle}</Text>
+            )}
+          </View>
+        </View>
+
+        {!!actionText && (
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={onActionPress}
+            style={styles.corporateSectionAction}>
+            <Text style={styles.corporateSectionActionText}>{actionText}</Text>
+            <Feather name="arrow-up-right" size={12} color="#005696" />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {children}
+    </View>
+  );
+
+  const CorporateEmptyState = ({ text }) => (
+    <View style={styles.corporateEmptyState}>
+      <Feather name="inbox" size={22} color="#94A3B8" />
+      <Text style={styles.corporateEmptyText}>{text}</Text>
+    </View>
+  );
+
+  const isModuleNotLoaded = modules.length === 0 && moduleLoadMessage !== '';
+
+  const getModuleConnectionText = () => {
+    return moduleLoadMessage;
+  };
 
   return (
     <SafeAreaView
@@ -4122,321 +6470,660 @@ const CRMDashBoard = ({navigation}) => {
         flex: 1,
         paddingBottom: insets.bottom, // prevents overlap with system navigation bar
       }}>
-      <StatusBar backgroundColor="#a9ddfaff" barStyle="light-content" />
+      <StatusBar backgroundColor="#005696" barStyle="light-content" />
       {salesLoading && (
         <View style={styles.loaderOverlay}>
           <ActivityIndicator size="large" color="#005696" />
           <Text style={styles.Lodertext}>Loading Sale Data....</Text>
         </View>
       )}
-      <View style={{marginLeft: 10, marginRight: 10, marginTop: 10}}>
-        <CustomViewMaster
-          selectionMode={1}
-          option1="Module"
-          option2="Dashboard"
-          onSelectSwitch={onSelectSwitch}
-        />
-      </View>
-      {gamesTab === 1 ? (
-        <View style={styles.container}>
-          {!netState.isConnected && (
-            <Text style={styles.warningText}>No Internet connection!</Text>
-          )}
-          {netState.isConnected && isPoorConnection && (
-            // <Text style={styles.warningText}>Poor Internet connection!</Text>
-            <Text style={styles.warningText}></Text>
-          )}
-          <View style={styles.header}>
-            {/* Lottie Banner */}
-            {/* <View style={styles.lottieWrapper}>
-              <LottieView
-                source={require('../assets/Marry Christmas & Happy New Year.json')}
-                autoPlay
-                loop
-                resizeMode="cover"
-                style={styles.lottie}
-              />
-            </View> */}
 
-            {/* Logo BELOW Lottie */}
-            <View style={styles.logoWrapper}>
-              <CRMImg height={100} width={100} />
+      <ScrollView
+        style={styles.modernPage}
+        contentContainerStyle={styles.modernPageContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }>
+        <View style={styles.heroCard}>
+          <View style={styles.heroGlowOne} />
+          <View style={styles.heroGlowTwo} />
+
+          <View style={styles.heroTop}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.heroLabel}>ie.CRM WORKSPACE</Text>
+              <Text style={styles.heroTitle} numberOfLines={2}>
+                Welcome, {useEmpname || 'User'}
+              </Text>
+              <Text style={styles.heroSubtitle} numberOfLines={1}>
+                {useDesignation || 'Field Force'} • {useDivision || 'Division'}
+              </Text>
+            </View>
+
+            {profilePicPath ? (
+              <Image
+                source={{ uri: `${url}/${profilePicPath}` }}
+                style={styles.heroAvatar}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={styles.heroAvatarFallback}>
+                <Ionicons name="person-outline" size={28} color="#005696" />
+              </View>
+            )}
+          </View>
+
+          <View style={styles.heroBottom}>
+            <View style={styles.heroInfoPill}>
+              <Feather name="briefcase" size={14} color="#ffffff" />
+              <Text style={styles.heroInfoText}>{useBusinessID}</Text>
+            </View>
+
+            <View style={styles.heroInfoPill}>
+              <Feather
+                name={netState?.isConnected ? 'wifi' : 'wifi-off'}
+                size={14}
+                color="#ffffff"
+              />
+              <Text style={styles.heroInfoText}>
+                {netState?.isConnected ? 'Online' : 'Offline'}
+              </Text>
             </View>
           </View>
+        </View>
+
+        {isModuleNotLoaded && (
+          <View style={styles.moduleWarningCard}>
+            <View style={styles.moduleWarningIconBox}>
+              <Feather name="alert-triangle" size={20} color="#B45309" />
+            </View>
+
+            <View style={{ flex: 1 }}>
+              <Text style={styles.moduleWarningTitle}>Service Alert</Text>
+              <Text style={styles.moduleWarningMessage}>
+                {getModuleConnectionText()}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {!netState.isConnected && (
+          <View style={styles.offlineCard}>
+            <Feather name="wifi-off" size={18} color="#B91C1C" />
+            <Text style={styles.offlineText}>
+              No Internet connection. Some dashboard data may not refresh.
+            </Text>
+          </View>
+        )}
+
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <View>
+              <Text style={styles.sectionTitle}>Modules</Text>
+              <Text style={styles.sectionSubtitle}>
+                {Array.isArray(modules) ? modules.length : 0} available modules
+              </Text>
+            </View>
+
+            <View style={styles.sectionIconPill}>
+              <Feather name="grid" size={18} color="#005696" />
+            </View>
+          </View>
+
           <FlatList
-            data={modules}
-            showsVerticalScrollIndicator={false}
-            keyExtractor={(item, index) => index.toString()}
+            data={Array.isArray(modules) ? modules : []}
+            keyExtractor={(item, index) =>
+              `${item?.IDMenu || item?.MainModuleSRL || item?.Module || 'module'}-${index}`
+            }
+            key={isTablet ? 'module-tablet-5-premium' : 'module-mobile-3-premium'}
             renderItem={renderItem}
-            numColumns={2}
-            contentContainerStyle={styles.list}
+            numColumns={isTablet ? 5 : 3}
+            scrollEnabled={false}
+            contentContainerStyle={styles.moduleList}
+            columnWrapperStyle={styles.moduleColumnWrapper}
+            ListEmptyComponent={
+              <View style={styles.emptyModuleBox}>
+                <Feather name="inbox" size={24} color="#94A3B8" />
+                <Text style={styles.emptyModuleText}>No module available</Text>
+              </View>
+            }
           />
         </View>
-      ) : (
-        <ScrollView
+      </ScrollView>
+
+
+      <View
+        style={styles.dashboardSwipeEdgeRight}
+        {...dashboardTabSwipeResponder.panHandlers}>
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={openDashboardTab}
+          style={styles.dashboardSwipePillRight}>
+          <Feather name="chevrons-left" size={17} color="#ffffff" />
+        </TouchableOpacity>
+      </View>
+
+      {isDashboardTabOpen && (
+        <View style={styles.dashboardTabLayer} pointerEvents="box-none">
+          <Animated.View
+            style={[
+              styles.dashboardTabBackdrop,
+              { opacity: dashboardTabBackdropOpacity },
+            ]}>
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              onPress={closeDashboardTab}
+            />
+          </Animated.View>
+
+          <Animated.View
+            {...dashboardTabCloseResponder.panHandlers}
+            style={[
+              styles.dashboardTabPanel,
+              {
+                width: dashboardTabWidth,
+                transform: [{ translateX: dashboardTabTranslateX }],
+              },
+            ]}>
+            <View style={styles.dashboardTabHeader}>
+              <View>
+                <Text style={styles.dashboardTabLabel}>Dashboard</Text>
+                <Text style={styles.dashboardTabTitle}>Insights & Activity</Text>
+              </View>
+
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={closeDashboardTab}
+                style={styles.dashboardTabCloseBtn}>
+                <Feather name="x" size={18} color="#005696" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.dashboardTabContent}>
+
+              {/* MOVE YOUR EXISTING LATER PAGE CONTENT HERE */}
+
+              <View style={styles.pendingVisitCard}>
+                <View style={styles.pendingIconBox}>
+                  <Feather name="clock" size={20} color="#005696" />
+                </View>
+
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.pendingTitle}>Pending Visits</Text>
+                  <Text style={styles.pendingSubtitle}>
+                    You have pending visits this week
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => Alert.alert('Notice', 'Quick Access is coming Soon .')}
+                  style={styles.visitNowButton}>
+                  <Text style={styles.visitNowText}>Visit Now</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.metricGridCompact}>
+                <DashboardCard
+                  title="RCPA AVG"
+                  count={avgDashboardData.RCPAAvg}
+                  icon="activity"
+                />
+
+                <DashboardCard
+                  title="POB"
+                  count={avgDashboardData.POB}
+                  icon="shopping-bag"
+                />
+
+                <DashboardCard
+                  title="DCR Doctor"
+                  count={todayDashboardData.DCRDoctors}
+                  icon="users"
+                />
+
+                <DashboardCard
+                  title="DCR Party"
+                  count={todayDashboardData.DCRParties}
+                  icon="shopping-cart"
+                />
+
+                <DashboardCard
+                  title="DCA"
+                  count={avgDashboardData.DCall}
+                  icon="pie-chart"
+                />
+
+                <DashboardCard
+                  title="RCA"
+                  count={avgDashboardData.RCall}
+                  icon="bar-chart-2"
+                />
+              </View>
+
+              {/* 
+          Paste your existing:
+          - Doctor Visit Frequency
+          - Party Visit Frequency
+          - Achievement
+          - Incentive
+          - Notice Board
+          - Birthday
+          - Team section
+          here.
+        */}
+
+
+              {/* Keep your existing chart, achievement, incentive, notice board, birthday, team, and modal sections below this */}
+              {/* <ScrollView
           style={{flex: 1, paddingHorizontal: 10}}
           contentContainerStyle={{paddingBottom: 30}}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }>
-          <View style={styles.container}>
-            {!netState.isConnected && (
-              <Text style={styles.warningText}>
-                No Internet connection! & No Data Found!
-              </Text>
-            )}
-            {/* <Text style={styles.noData}>No Data Found</Text> */}
+          }> */}
+              <View style={styles.dashboardCorporateBody}>
+                {DoctorVisitFrequency.length > 0 && (
+                  <>
+                    <View style={styles.visitChartStableCard}>
+                      <View style={styles.visitChartHeader}>
+                        <View style={styles.visitChartTitleWrap}>
+                          <View style={styles.visitChartIconBox}>
+                            <Feather name="bar-chart-2" size={17} color="#005696" />
+                          </View>
 
-            <View
-              style={{
-                marginBottom: 10,
-                marginTop: 10,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 10,
-              }}>
-              {profilePicPath ? (
-                <Image
-                  source={{uri: `${url}/${profilePicPath}`}}
-                  style={styles.avatar}
-                  resizeMode="cover"
-                />
-              ) : (
-                <Ionicons name="person-circle-outline" size={60} color="#ccc" />
-              )}
-              <View style={{flexDirection: 'column'}}>
-                <Text style={styles.name}>Welcome, {useEmpname}</Text>
-                <Text style={{color: '#666', marginLeft: 10, marginTop: 5}}>
-                  {useBusinessID}
-                </Text>
-              </View>
-            </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.visitChartTitle}>Doctor Visit Frequency</Text>
+                            <Text style={styles.visitChartSubtitle}>Day-wise visit trend</Text>
+                          </View>
+                        </View>
+                      </View>
 
-            <View
-              flexDirection="row"
-              style={{padding: 10, borderRadius: 8, marginBottom: 5}}>
-              <Text>You have Pending visits this week</Text>
-              <TouchableOpacity
-                onPress={() =>
-                  Alert.alert('Notice', 'Quick Access is coming Soon .')
-                }
-                style={{flexDirection: 'row', alignItems: 'center'}}>
-                <Text
-                  style={{
-                    color: '#005696',
-                    marginLeft: 10,
-                    fontWeight: 'bold',
-                    fontSize: 16,
-                  }}>
-                  Visit Now
-                </Text>
-              </TouchableOpacity>
-            </View>
-            {/* <View style={styles.row}>
-              <QuickAccessCard
-                title="DCR"
-                icon="file-text"
-                backgroundColor="#005696"
-              />
-              <QuickAccessCard
-                title="MASTER"
-                icon="database"
-                backgroundColor="#005696"
-              />
-              <QuickAccessCard
-                title="SALE"
-                icon="pie-chart"
-                backgroundColor="#005696"
-              />
-              <QuickAccessCard
-                title="LEAVE"
-                icon="calendar"
-                backgroundColor="#005696"
-              />
-            </View>
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.visitChartScroll}>
+                        <View style={styles.visitChartBox}>
+                          <BarChart
+                            data={barData}
+                            barWidth={22}
+                            spacing={12}
+                            initialSpacing={8}
+                            showValuesOnTopOfBars={true}
+                            roundedTop
+                            showGradient
+                            isAnimated={false}
+                            noOfSections={5}
+                            maxValue={50}
+                            height={220}
+                            width={Math.max(dashboardTabWidth - 70, 320)}
+                            yAxisColor="#D8E5EF"
+                            xAxisColor="#D8E5EF"
+                            xAxisLabelTextStyle={styles.corporateAxisLabel}
+                            yAxisTextStyle={styles.corporateYAxisLabel}
+                          />
+                        </View>
+                      </ScrollView>
+                    </View>
 
-            <View style={styles.row}>
-              <DashboardCard
-                title="RCPA AVG"
-                count={avgDashboardData.RCPAAvg}
-                backgroundColor="#eeededff"
-                icon="activity"
-              />
-              <DashboardCard
-                title="POB"
-                count={avgDashboardData.POB}
-                backgroundColor="#eeededff"
-                icon="shopping-bag"
-              />
-            </View> */}
-            <View style={styles.row}>
-              <DashboardCard
-                title="DCR Doctor"
-                count={todayDashboardData.DCRDoctors}
-                backgroundColor="#eeededff"
-                icon="users"
-              />
-              <DashboardCard
-                title="DCR Party"
-                count={todayDashboardData.DCRParties}
-                backgroundColor="#eeededff"
-                icon="shopping-cart"
-              />
-            </View>
-            <View style={styles.row}>
-              <DashboardCard
-                title="DCA"
-                count={avgDashboardData.DCall}
-                //backgroundColor="#1ff2be"
-                backgroundColor="#eeededff"
-                icon="pie-chart"
-              />
-              <DashboardCard
-                title="RCA"
-                count={avgDashboardData.RCall}
-                backgroundColor="#eeededff"
-                icon="bar-chart-2"
-              />
-            </View>
+                    <View style={styles.visitChartStableCard}>
+                      <View style={styles.visitChartHeader}>
+                        <View style={styles.visitChartTitleWrap}>
+                          <View style={styles.visitChartIconBox}>
+                            <Feather name="trending-up" size={17} color="#005696" />
+                          </View>
 
-            {DoctorVisitFrequency.length > 0 && (
-              <>
-                <Text
-                  style={{
-                    fontSize: 16,
-                    // fontWeight: 'bold',
-                    fontFamily: 'Roboto-Medium',
-                    marginTop: 20,
-                    marginBottom: 10,
-                  }}>
-                  📊 Doctor Visit Frequency (By Day of Month)
-                </Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={true}>
-                  <View style={{padding: 10}}>
-                    <BarChart
-                      data={barData}
-                      barWidth={25}
-                      spacing={10}
-                      initialSpacing={5}
-                      showValuesOnTopOfBars={true}
-                      roundedTop
-                      showGradient
-                      isAnimated
-                      noOfSections={5}
-                      maxValue={50}
-                      height={250}
-                      width={screenWidth - 32}
-                      yAxisColor="#ccc"
-                      xAxisColor="#ccc"
-                      xAxisLabelTextStyle={{color: '#444', fontSize: 12}}
-                      yAxisTextStyle={{color: '#444', fontSize: 10}}
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.visitChartTitle}>Party Visit Frequency</Text>
+                            <Text style={styles.visitChartSubtitle}>
+                              Retailer / party visit trend
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.visitChartScroll}>
+                        <View style={styles.visitChartBox}>
+                          <BarChart
+                            data={chartDataretailer}
+                            barWidth={22}
+                            spacing={12}
+                            initialSpacing={8}
+                            showValuesOnTopOfBars={true}
+                            roundedTop
+                            showGradient
+                            isAnimated={false}
+                            noOfSections={5}
+                            maxValue={100}
+                            height={220}
+                            width={Math.max(dashboardTabWidth - 70, 320)}
+                            yAxisColor="#D8E5EF"
+                            xAxisColor="#D8E5EF"
+                            xAxisLabelTextStyle={styles.corporateAxisLabel}
+                            yAxisTextStyle={styles.corporateYAxisLabel}
+                          />
+                        </View>
+                      </ScrollView>
+                    </View>
+                  </>
+                )}
+
+                <View style={styles.achievementCorporateCard}>
+                  <View style={styles.achievementCorporateHeader}>
+                    <View style={styles.achievementCorporateTitleWrap}>
+                      <View style={styles.achievementCorporateIconBox}>
+                        <Feather name="pie-chart" size={17} color="#005696" />
+                      </View>
+
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.achievementCorporateTitle}>Achievement</Text>
+                        <Text style={styles.achievementCorporateSubtitle}>
+                          {viewType} sales performance
+                        </Text>
+                      </View>
+                    </View>
+
+                    <Dropdown
+                      style={styles.achievementDropdownStable}
+                      placeholderStyle={styles.placeholderStyle}
+                      selectedTextStyle={styles.selectedTextStyle}
+                      data={dropdownOptions}
+                      labelField="label"
+                      valueField="value"
+                      value={viewType}
+                      onChange={item => {
+                        setViewType(item.value);
+                      }}
                     />
                   </View>
-                </ScrollView>
 
-                <Text
-                  style={{
-                    fontSize: 16,
-                    //fontWeight: 'bold',
-                    fontFamily: 'Roboto-Medium',
-                    marginTop: 20,
-                    marginBottom: 10,
-                  }}>
-                  📊 Party Visit Frequency (By Day of Month)
-                </Text>
+                  <View style={styles.achievementSummaryRow}>
+                    <View style={styles.achievementPercentBox}>
+                      <Text style={styles.achievementPercentText}>{achievement || 0}%</Text>
+                      <Text style={styles.achievementPercentLabel}>Achievement</Text>
+                    </View>
 
-                <ScrollView horizontal showsHorizontalScrollIndicator={true}>
-                  <View style={{padding: 10}}>
-                    <BarChart
-                      data={chartDataretailer}
-                      barWidth={25}
-                      spacing={10}
-                      initialSpacing={5}
-                      showValuesOnTopOfBars={true}
-                      roundedTop
-                      showGradient
-                      isAnimated
-                      noOfSections={5}
-                      maxValue={100}
-                      height={250}
-                      width={screenWidth - 32}
-                      yAxisColor="#ccc"
-                      xAxisColor="#ccc"
-                      xAxisLabelTextStyle={{color: '#444', fontSize: 12}}
-                      yAxisTextStyle={{color: '#444', fontSize: 10}}
+                    <View style={styles.achievementAmountBox}>
+                      <Text style={styles.achievementAmountLabel}>Sales Value</Text>
+                      <Text style={styles.achievementAmountValue}>
+                        ₹ {Number(saleData?.achieved || 0).toLocaleString('en-IN')}
+                      </Text>
+
+                      <View style={styles.achievementAmountDivider} />
+
+                      <Text style={styles.achievementAmountLabel}>Target Value</Text>
+                      <Text style={styles.achievementTargetValue}>
+                        ₹ {Number(saleData?.target || 0).toLocaleString('en-IN')}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.achievementPieStableArea}>
+                    <PieChart
+                      donut
+                      innerRadius={105}
+                      radius={132}
+                      data={pieData}
+                      isAnimated={false}
+                      centerLabelComponent={() => (
+                        <View style={styles.achievementPieCenter}>
+                          <Text style={styles.achievementPieCenterValue}>
+                            {achievement || 0}%
+                          </Text>
+                          <Text style={styles.achievementPieCenterText}>Done</Text>
+                        </View>
+                      )}
                     />
                   </View>
-                </ScrollView>
-              </>
-            )}
 
-            {/* 🔹 Sales Achievement Section */}
+                  <View style={styles.achievementLegendStable}>
+                    <View style={styles.achievementLegendItem}>
+                      <View style={[styles.achievementLegendDot, { backgroundColor: '#58D68D' }]} />
+                      <Text style={styles.achievementLegendText}>Sales Value</Text>
+                    </View>
 
-            {/* 🔹 Notice Board Section */}
-
-            {/* 🔹 BirthDay List Section */}
-            <View
-              style={{
-                flex: 1,
-                backgroundColor: '#ffffff',
-                padding: 10,
-                marginTop: 20,
-              }}>
-              {/* 🔹 Header Row with Title + See All */}
-              <View
-                style={{
-                  //flexDirection: "row",
-                  // justifyContent: "space-between",
-                  // alignItems: "center",
-                  marginBottom: 10,
-                  backgroundColor: '#ffffff',
-                  borderRadius: 12,
-                  padding: 10,
-                  shadowColor: '#000',
-                  shadowOffset: {width: 0, height: 4},
-                  shadowOpacity: 0.2,
-                  shadowRadius: 6,
-                  elevation: 5, // Android shadow
-                }}>
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}>
-                  <Text style={{fontSize: 16, fontWeight: 'bold'}}>
-                    Upcoming BirthDays
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => navigation.navigate('BirthDay List')}>
-                    <Text
-                      style={{fontSize: 14, color: 'blue', fontWeight: '600'}}>
-                      See All
-                    </Text>
-                  </TouchableOpacity>
+                    <View style={styles.achievementLegendItem}>
+                      <View style={[styles.achievementLegendDot, { backgroundColor: '#2E86DE' }]} />
+                      <Text style={styles.achievementLegendText}>Target Value</Text>
+                    </View>
+                  </View>
                 </View>
-                {/* 🔹 Birthday list inside a 3D Card */}
-                <FlatList
-                  data={birthdays}
-                  keyExtractor={(item, index) => index.toString()}
-                  renderItem={BirthdayRenderItem}
-                  contentContainerStyle={{paddingBottom: 10}}
-                />
-              </View>
-            </View>
 
-            {/* 🔹 Team Section */}
-          </View>
-        </ScrollView>
+                {showMPPLData ? (
+                  <CorporateSection
+                    title="Incentive"
+                    subtitle="Quarter-wise incentive summary"
+                    icon="award">
+                    <Dropdown
+                      style={styles.corporateDropdown}
+                      placeholderStyle={styles.placeholderStyle}
+                      selectedTextStyle={styles.selectedTextStyle}
+                      inputSearchStyle={styles.inputSearchStyle}
+                      iconStyle={styles.iconStyle}
+                      data={useIDyear}
+                      search
+                      maxHeight={300}
+                      labelField="label"
+                      valueField="value"
+                      placeholder={!isFocus ? 'Select Year' : '...'}
+                      searchPlaceholder="Search"
+                      onFocus={() => setIsFocus(true)}
+                      onBlur={() => setIsFocus(false)}
+                      onChange={item => {
+                        setIDyearValue(item.value);
+                        setIsFocus(false);
+                        getIDQuarterIncentive(item.value);
+                      }}
+                    />
+
+                    <Dropdown
+                      style={[styles.corporateDropdown, { marginTop: 10 }]}
+                      placeholderStyle={styles.placeholderStyle}
+                      selectedTextStyle={styles.selectedTextStyle}
+                      inputSearchStyle={styles.inputSearchStyle}
+                      iconStyle={styles.iconStyle}
+                      data={useIDQuarter}
+                      search
+                      maxHeight={300}
+                      labelField="label"
+                      valueField="value"
+                      placeholder={!isFocus ? 'Select Quarter' : '...'}
+                      searchPlaceholder="Search"
+                      onFocus={() => setIsFocus(true)}
+                      onBlur={() => setIsFocus(false)}
+                      onChange={item => {
+                        setIDQuarterValue(item.value);
+                        setIsFocus(false);
+                        getIncentiveData(item.value);
+                      }}
+                    />
+
+                    {!dataFound ? (
+                      <CorporateEmptyState text="No incentive data found" />
+                    ) : (
+                      <>
+                        <View style={styles.incentiveSummaryCard}>
+                          <View>
+                            <Text style={styles.incentiveLabel}>Total Incentive</Text>
+                            <Text style={styles.incentiveValue}>₹ {totalAmount || 0}</Text>
+                          </View>
+
+                          <View style={styles.incentiveIconBox}>
+                            <Feather name="trending-up" size={20} color="#67BC45" />
+                          </View>
+                        </View>
+
+                        <TouchableOpacity
+                          activeOpacity={0.85}
+                          style={styles.corporatePrimaryButton}
+                          onPress={() => setIncentiveModalVisible(true)}>
+                          <Text style={styles.corporatePrimaryButtonText}>View Incentive</Text>
+                          <Feather name="arrow-right" size={15} color="#FFFFFF" />
+                        </TouchableOpacity>
+                      </>
+                    )}
+                  </CorporateSection>
+                ) : null}
+
+                <CorporateSection
+                  title="Notice Board"
+                  subtitle="Latest announcements"
+                  icon="send"
+                  actionText="See All"
+                  onActionPress={() =>
+                    navigation.reset({
+                      index: 0,
+                      routes: [{ name: 'NoticeBoardList' }],
+                    })
+                  }>
+                  <FlatList
+                    data={noticeboard}
+                    keyExtractor={item => item.IDNotice.toString()}
+                    renderItem={({ item }) => <NoticeBoardRenderItem item={item} />}
+                    scrollEnabled={false}
+                    contentContainerStyle={{ paddingBottom: 4 }}
+                    ListEmptyComponent={<CorporateEmptyState text="No notice available" />}
+                  />
+                </CorporateSection>
+
+                <CorporateSection
+                  title="Upcoming Birthdays"
+                  subtitle="Team celebrations"
+                  icon="gift"
+                  actionText="See All"
+                  onActionPress={() => navigation.navigate('BirthDay List')}>
+                  <FlatList
+                    data={Array.isArray(birthdays) ? birthdays : []}
+                    keyExtractor={(item, index) =>
+                      `${item.IDEmployee || item.EmployeeNo || item.Employee || 'birthday'}-${item.DOB || item.FormattedDOB || ''
+                      }-${index}`
+                    }
+                    renderItem={BirthdayRenderItem}
+                    scrollEnabled={false}
+                    contentContainerStyle={{ paddingBottom: 4 }}
+                    ListEmptyComponent={<CorporateEmptyState text="No birthday available" />}
+                  />
+                </CorporateSection>
+
+                <View style={styles.teamStableCard}>
+                  <View style={styles.teamStableHeader}>
+                    <View style={styles.teamStableTitleWrap}>
+                      <View style={styles.teamStableIconBox}>
+                        <Feather name="users" size={17} color="#005696" />
+                      </View>
+
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.teamStableTitle}>Team</Text>
+                        <Text style={styles.teamStableSubtitle}>
+                          {filteredMyTeam.length || 0} employees found
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  <View style={styles.corporateSearchBox}>
+                    <Ionicons name="search" size={18} color="#7A8CA0" />
+
+                    <TextInput
+                      style={styles.corporateSearchInput}
+                      placeholder="Search employee, division, manager"
+                      placeholderTextColor="#94A3B8"
+                      value={searchQuery}
+                      onChangeText={handleSearch}
+                    />
+                  </View>
+
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    nestedScrollEnabled>
+                    <View style={styles.corporateTable}>
+                      <View style={styles.corporateTableHeader}>
+                        <Text style={[styles.corporateHeaderCell, { width: 105 }]}>Emp No</Text>
+                        <Text style={[styles.corporateHeaderCell, { width: 175 }]}>Employee</Text>
+                        <Text style={[styles.corporateHeaderCell, { width: 130 }]}>Phone</Text>
+                        <Text style={[styles.corporateHeaderCell, { width: 120 }]}>Work</Text>
+                        <Text style={[styles.corporateHeaderCell, { width: 105 }]}>Division</Text>
+                        <Text style={[styles.corporateHeaderCell, { width: 145 }]}>
+                          Designation
+                        </Text>
+                        <Text style={[styles.corporateHeaderCell, { width: 170 }]}>Manager</Text>
+                      </View>
+
+                      <FlatList
+                        data={paginatedData}
+                        keyExtractor={(item, index) =>
+                          `${item?.IDEmployee || item?.EmployeeNo || 'team'}-${index}`
+                        }
+                        renderItem={renderTeamRow}
+                        scrollEnabled={false}
+                        removeClippedSubviews={false}
+                        initialNumToRender={10}
+                        maxToRenderPerBatch={10}
+                        windowSize={5}
+                        ListEmptyComponent={<CorporateEmptyState text="No team data found" />}
+                      />
+                    </View>
+                  </ScrollView>
+
+                  <View style={styles.corporatePagination}>
+                    <TouchableOpacity
+                      disabled={currentPage === 0}
+                      onPress={() => setCurrentPage(prev => Math.max(prev - 1, 0))}
+                      style={[
+                        styles.paginationBtn,
+                        currentPage === 0 && styles.paginationBtnDisabled,
+                      ]}>
+                      <Feather name="chevron-left" size={15} color="#FFFFFF" />
+                      <Text style={styles.paginationBtnText}>Previous</Text>
+                    </TouchableOpacity>
+
+                    <Text style={styles.paginationText}>
+                      Page {currentPage + 1} of{' '}
+                      {Math.max(Math.ceil(filteredMyTeam.length / itemsPerPage), 1)}
+                    </Text>
+
+                    <TouchableOpacity
+                      disabled={(currentPage + 1) * itemsPerPage >= filteredMyTeam.length}
+                      onPress={() => setCurrentPage(prev => prev + 1)}
+                      style={[
+                        styles.paginationBtn,
+                        (currentPage + 1) * itemsPerPage >= filteredMyTeam.length &&
+                        styles.paginationBtnDisabled,
+                      ]}>
+                      <Text style={styles.paginationBtnText}>Next</Text>
+                      <Feather name="chevron-right" size={15} color="#FFFFFF" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+
+              </View>
+
+
+
+            </ScrollView>
+          </Animated.View>
+        </View>
       )}
+
+
+
+
+
+
       <Modal
         transparent={true}
         animationType="fade"
         visible={isModalVisible}
         onRequestClose={toggleModal}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
+        <View style={styles.alertModalOverlay}>
+          <View style={styles.alertModalContainer}>
             {/* <View style={styles.iconContainer}>
                     <Text style={styles.errorIcon}>✖</Text>
                   </View>
@@ -4453,7 +7140,7 @@ const CRMDashBoard = ({navigation}) => {
       <ProgressDialog visible={loading} message="Please Wait..." />
       {/* 🟢 ChatBot Icon Floating */}
       <TouchableOpacity
-        style={[styles.chatIcon, {bottom: insets.bottom + 14}]}
+        style={[styles.chatIcon, { bottom: insets.bottom + 14 }]}
         onPress={() => setChatVisible(true)}>
         <AntDesign name="message1" size={28} color="#005696" />
       </TouchableOpacity>
@@ -4467,7 +7154,7 @@ const CRMDashBoard = ({navigation}) => {
           <View
             style={[
               styles.chatModal,
-              {height: isKeyboardVisible ? '80%' : '50%'},
+              { height: isKeyboardVisible ? '80%' : '50%' },
             ]}>
             {/* Header */}
             <View
@@ -4477,11 +7164,11 @@ const CRMDashBoard = ({navigation}) => {
                 alignItems: 'center',
                 marginBottom: 10,
               }}>
-              <Text style={{fontWeight: 'bold', fontSize: 16}}>
+              <Text style={{ fontWeight: 'bold', fontSize: 16 }}>
                 🤖 H.A.R.U.
               </Text>
               <TouchableOpacity onPress={() => setChatVisible(false)}>
-                <Text style={{fontSize: 18, color: 'red'}}>✕</Text>
+                <Text style={{ fontSize: 18, color: 'red' }}>✕</Text>
               </TouchableOpacity>
             </View>
 
@@ -4489,10 +7176,10 @@ const CRMDashBoard = ({navigation}) => {
             <ScrollView
               ref={scrollViewRef}
               style={styles.chatBox}
-              contentContainerStyle={{paddingBottom: 10}}
+              contentContainerStyle={{ paddingBottom: 10 }}
               showsVerticalScrollIndicator={false}
               onContentSizeChange={() =>
-                scrollViewRef.current?.scrollToEnd({animated: true})
+                scrollViewRef.current?.scrollToEnd({ animated: true })
               }>
               {chatMessages.map((msg, i) => (
                 <Text
@@ -4525,10 +7212,10 @@ const CRMDashBoard = ({navigation}) => {
                 placeholder="Type a message"
               />
               <TouchableOpacity onPress={handleSendChat} style={styles.sendBtn}>
-                <Text style={{color: 'white'}}>Send</Text>
+                <Text style={{ color: 'white' }}>Send</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={startListening} style={styles.micBtn}>
-                <Text style={{color: 'white'}}>
+                <Text style={{ color: 'white' }}>
                   {isListening ? '🎙️' : '🎤'}
                 </Text>
               </TouchableOpacity>
@@ -4579,7 +7266,7 @@ const CRMDashBoard = ({navigation}) => {
                 },
               ]}>
               <Icon name="whatsapp" size={18} color="#fff" />
-              <Text style={[styles.modalBtnText, {marginLeft: 10}]}>
+              <Text style={[styles.modalBtnText, { marginLeft: 10 }]}>
                 WhatsApp
               </Text>
             </Pressable>
@@ -4596,7 +7283,7 @@ const CRMDashBoard = ({navigation}) => {
                 },
               ]}>
               <Icon name="comment-dots" size={18} color="#fff" />
-              <Text style={[styles.modalBtnText, {marginLeft: 10}]}>Chat</Text>
+              <Text style={[styles.modalBtnText, { marginLeft: 10 }]}>Chat</Text>
             </Pressable>
 
             {/* Phone */}
@@ -4611,7 +7298,7 @@ const CRMDashBoard = ({navigation}) => {
                 },
               ]}>
               <Icon name="phone-alt" size={16} color="#fff" />
-              <Text style={[styles.modalBtnText, {marginLeft: 10}]}>
+              <Text style={[styles.modalBtnText, { marginLeft: 10 }]}>
                 Phone Call
               </Text>
             </Pressable>
@@ -4629,9 +7316,118 @@ const CRMDashBoard = ({navigation}) => {
                 },
               ]}>
               <Icon name="times" size={16} color="#fff" />
-              <Text style={{color: '#fff', marginLeft: 10}}>Cancel</Text>
+              <Text style={{ color: '#fff', marginLeft: 10 }}>Cancel</Text>
             </Pressable>
           </View>
+        </View>
+      </Modal>
+
+      {/* Visit Details Modal*/}
+      <Modal
+        visible={visitDetailsModalVisible}
+        animationType="slide"
+        transparent={true}>
+        <View style={styles.modalOverlay1}>
+          <View style={styles.modalContainer1}>
+            {/* Header */}
+            <View style={styles.modalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>Visit Details</Text>
+                <Text style={styles.modalSubTitle}>
+                  {selectedEmp?.EmployeeName}
+                </Text>
+              </View>
+
+              <View style={styles.headerActions}>
+                <TouchableOpacity
+                  onPress={shareVisitPDF}
+                  style={styles.shareButton}
+                  activeOpacity={0.85}>
+                  <Feather name="share-2" size={16} color="#fff" />
+                  <Text style={styles.shareButtonText}>Share</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => setVisitDetailsModalVisible(false)}
+                  style={styles.closeButton}>
+                  <Feather name="x" size={18} color="#005696" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Summary Count */}
+            {reportCount && (
+              <>
+                <View style={styles.summaryBox}>
+                  <View style={styles.summaryCard}>
+                    <Text style={styles.summaryValue}>
+                      {reportCount.DoctorCount}
+                    </Text>
+                    <Text style={styles.summaryLabel}>Doctors</Text>
+                  </View>
+
+                  <View style={styles.summaryCard}>
+                    <Text style={styles.summaryValue}>
+                      {reportCount.RetailerCount}
+                    </Text>
+                    <Text style={styles.summaryLabel}>Retailers</Text>
+                  </View>
+                </View>
+
+                <View style={styles.summaryBox}>
+                  <View style={styles.summaryCard}>
+                    <Text style={styles.summaryValue}>
+                      {reportCount.RetailerMissedcallCount}
+                    </Text>
+                    <Text style={styles.summaryLabel}>Missed Calls</Text>
+                  </View>
+
+                  <View style={styles.summaryCard}>
+                    <Text style={styles.summaryValue}>
+                      {reportCount.RCPACount}
+                    </Text>
+                    <Text style={styles.summaryLabel}>RCPA</Text>
+                  </View>
+                </View>
+              </>
+            )}
+
+            {/* Loader */}
+            {loadingVisitDetails ? (
+              <ActivityIndicator size="large" color="#0E7777" />
+            ) : (
+              <FlatList
+                data={visitReport}
+                keyExtractor={item => item.SRL.toString()}
+                renderItem={({ item }) => (
+                  <View style={styles.visitCard}>
+                    <Text style={styles.customerName}>{item.CustomerName}</Text>
+                    <Text style={styles.visitInfo}>Area: {item.Area}</Text>
+                    <Text style={styles.visitInfo}>Time: {item.VisitTime}</Text>
+                  </View>
+                )}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* ✅ Modal Preview */}
+      <Modal visible={visible} transparent animationType="fade">
+        <View style={styles.modalContainernotice}>
+          {/* Close Button */}
+          <TouchableOpacity
+            style={styles.closeBtn}
+            onPress={() => setVisible(false)}>
+            <Ionicons name="close" size={28} color="#fff" />
+          </TouchableOpacity>
+
+          {/* Full Image */}
+          <Image
+            source={{ uri: noticeurl }}
+            style={styles.fullImage}
+            resizeMode="contain"
+          />
         </View>
       </Modal>
     </SafeAreaView>
@@ -4641,15 +7437,8 @@ const CRMDashBoard = ({navigation}) => {
 export default CRMDashBoard;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-  },
-  header: {
-    alignItems: 'center',
-    marginTop: 10,
-  },
+
+
 
   lottieWrapper: {
     marginTop: 5,
@@ -4668,51 +7457,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   menu: {
-    margin: 5,
+    margin: 10,
     padding: 5,
     width: 150,
     height: 130,
     elevation: 5,
     // iOS SHADOW
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 1},
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 3.84,
     borderRadius: 5,
-  },
-  warningText: {
-    color: 'red',
-    fontSize: 18,
-    marginBottom: 10,
-    fontFamily: 'Lato-Regular',
-  },
-
-  menuItem: {
-    fontSize: 16,
-    fontFamily: 'Lato-Regular',
-    color: '#000',
-    margin: 5,
-    padding: 5,
-    textAlignVertical: 'center',
-    textAlign: 'center',
-    alignItems: 'center', // Centered horizontally
-  },
-  imageDesign: {
-    width: 40,
-    height: 40,
-    marginTop: 15,
-    padding: 5,
-    justifyContent: 'center', //Centered vertically
-    alignSelf: 'center', // Centered horizontally
-  },
-  card: {
-    height: 150,
-    width: Dimensions.get('window').width,
-    padding: 5,
-    backgroundColor: '#ffffff',
-    elevation: 5,
-    justifyContent: 'center', //Centered vertically
-    alignItems: 'center', // Centered horizontally
   },
 
   gridView: {
@@ -4747,13 +7502,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  modalOverlay: {
+  alertModalOverlay: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
-  modalContainer: {
+  alertModalContainer: {
     width: 300,
     backgroundColor: '#ffffff',
     borderRadius: 10,
@@ -4761,7 +7516,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     shadowColor: '#000',
     shadowOpacity: 0.3,
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowRadius: 10,
     elevation: 5,
   },
@@ -4884,7 +7639,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 10,
   },
-  card: {
+  dashboardCard: {
     backgroundColor: '#e3f2fd',
     flex: 0.48,
     borderRadius: 10,
@@ -4892,7 +7647,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     shadowColor: '#000',
     shadowOpacity: 0.5,
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
     elevation: 3,
     marginRight: 10,
@@ -4907,7 +7662,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
     marginBottom: 4,
   },
-  iconContainer: {
+  dashboardIconContainer: {
     position: 'absolute',
     top: 8,
     right: 8,
@@ -4929,6 +7684,9 @@ const styles = StyleSheet.create({
   },
   list: {
     justifyContent: 'center',
+    gap: 5,
+    //columnGap: 10,
+    //rowGap: 10,
   },
   moduleText: {
     fontSize: 16,
@@ -4983,6 +7741,13 @@ const styles = StyleSheet.create({
     flexShrink: 1, // allow shrinking
     flexWrap: 'wrap', // allow wrapping
   },
+  detailsBirthday: {
+    fontSize: 10,
+    color: '#555',
+    fontFamily: 'Roboto-Regular',
+    flexShrink: 1, // allow shrinking
+    flexWrap: 'wrap', // allow wrapping
+  },
 
   info: {
     justifyContent: 'center',
@@ -4998,7 +7763,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.25,
     shadowRadius: 6,
-    shadowOffset: {width: 0, height: 3},
+    shadowOffset: { width: 0, height: 3 },
     backgroundColor: '#fff',
     borderWidth: 0.5,
     borderColor: '#444',
@@ -5033,7 +7798,7 @@ const styles = StyleSheet.create({
     marginLeft: 15,
     elevation: 3,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 1},
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 3,
   },
@@ -5074,7 +7839,7 @@ const styles = StyleSheet.create({
     padding: 12,
     marginTop: 10,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 3},
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
@@ -5104,6 +7869,22 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
     borderColor: '#eee',
     flexWrap: 'wrap', // ✅ wrap long text
+  },
+  viewBtn: {
+    justifyContent: 'center',
+    textAlign: 'center',
+    borderWidth: 1,
+    borderColor: '#2563eb',
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: '#eff6ff',
+    marginLeft: 15,
+  },
+  viewBtnText: {
+    color: '#2563eb',
+    fontWeight: '600',
+    fontSize: 14,
   },
   chartCard: {
     backgroundColor: '#ffffff',
@@ -5173,5 +7954,1497 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
     fontSize: 14,
+  },
+  modalOverlay1: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+  },
+
+  modalContainer1: {
+    flex: 0.88,
+    backgroundColor: '#ffffff',
+    marginHorizontal: 15,
+    borderRadius: 18,
+    padding: 18,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 10,
+  },
+
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eef2f5',
+    paddingBottom: 10,
+  },
+
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#005696',
+  },
+
+  modalSubTitle: {
+    fontSize: 13,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+
+  closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  /* -------- Summary Section -------- */
+
+  summaryBox: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 15,
+  },
+
+  summaryCard: {
+    flex: 1,
+    backgroundColor: '#f4f8fb',
+    paddingVertical: 12,
+    marginHorizontal: 5,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+
+  summaryValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#005696',
+  },
+
+  summaryLabel: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 4,
+  },
+
+  /* -------- Visit Cards -------- */
+
+  visitCard: {
+    backgroundColor: '#ffffff',
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    elevation: 2,
+  },
+
+  customerName: {
+    fontWeight: '700',
+    fontSize: 15,
+    color: '#111827',
+  },
+
+  visitInfo: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 3,
+  },
+
+  /* -------- Share Button -------- */
+
+  shareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#005696',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    marginRight: 10,
+  },
+
+  shareButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 13,
+    marginLeft: 6,
+  },
+  dropdown: {
+    height: 50,
+    borderColor: 'gray',
+    borderWidth: 0.5,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    backgroundColor: '#fff',
+    //marginBottom: 10,
+    //marginTop: 5,
+  },
+  placeholderStyle: {
+    fontSize: 16,
+  },
+  selectedTextStyle: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+  },
+  iconStyle: {
+    width: 20,
+    height: 20,
+  },
+  inputSearchStyle: {
+    height: 40,
+    fontSize: 16,
+  },
+  modalContainernotice: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  fullImage: {
+    width: '95%',
+    height: '80%',
+  },
+
+  closeBtn: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    zIndex: 10,
+  },
+  nameCell: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  statusDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    marginRight: 8,
+  },
+  moduleWarningCard: {
+    width: '92%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF8E6',
+    borderLeftWidth: 5,
+    borderLeftColor: '#F59E0B',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginTop: 10,
+    marginBottom: 12,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+  },
+
+  moduleWarningIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+
+  moduleWarningTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#92400E',
+    marginBottom: 2,
+  },
+
+  moduleWarningMessage: {
+    fontSize: 13,
+    color: '#78350F',
+    lineHeight: 18,
+  },
+  nameText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#111827',
+    textAlign: 'center',
+    justifyContent: 'center',
+  },
+  modernPage: {
+    flex: 1,
+    backgroundColor: '#EEF7FB',
+  },
+
+  modernPageContent: {
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 34,
+  },
+
+  heroCard: {
+    minHeight: 178,
+    borderRadius: 30,
+    padding: 20,
+    backgroundColor: '#005696',
+    overflow: 'hidden',
+    marginBottom: 16,
+
+    shadowColor: '#005696',
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.28,
+    shadowRadius: 24,
+    elevation: 10,
+  },
+
+  heroGlowOne: {
+    position: 'absolute',
+    width: 210,
+    height: 210,
+    borderRadius: 120,
+    backgroundColor: 'rgba(103,188,69,0.32)',
+    right: -70,
+    top: -65,
+  },
+
+  heroGlowTwo: {
+    position: 'absolute',
+    width: 150,
+    height: 150,
+    borderRadius: 90,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    left: -55,
+    bottom: -65,
+  },
+
+  heroTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 2,
+  },
+
+  heroLabel: {
+    color: 'rgba(255,255,255,0.74)',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.7,
+    //textTransform: 'uppercase',
+  },
+
+  heroTitle: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '800',
+    marginTop: 7,
+  },
+
+  heroSubtitle: {
+    color: 'rgba(255,255,255,0.82)',
+    fontSize: 13,
+    marginTop: 5,
+    fontWeight: '600',
+  },
+
+  heroAvatar: {
+    width: 58,
+    height: 58,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.65)',
+  },
+
+  heroAvatarFallback: {
+    width: 58,
+    height: 58,
+    borderRadius: 22,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  heroBottom: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 26,
+    zIndex: 2,
+  },
+
+  heroInfoPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+  },
+
+  heroInfoText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '700',
+    marginLeft: 7,
+  },
+
+  sectionCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 26,
+    padding: 16,
+    marginBottom: 16,
+
+    shadowColor: '#003D73',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.09,
+    shadowRadius: 20,
+    elevation: 5,
+  },
+
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+
+  sectionTitle: {
+    fontSize: 19,
+    color: '#16324F',
+    fontWeight: '800',
+  },
+
+  sectionSubtitle: {
+    color: '#7B8A9B',
+    fontSize: 12.5,
+    marginTop: 4,
+    fontWeight: '600',
+  },
+
+  sectionIconPill: {
+    width: 40,
+    height: 40,
+    borderRadius: 15,
+    backgroundColor: '#E8F2F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#D7EAF5',
+  },
+
+  moduleList: {
+    paddingTop: 2,
+    paddingBottom: 4,
+  },
+
+  moduleColumnWrapper: {
+    justifyContent: 'space-between',
+  },
+
+  moduleCardWrap: {
+    width: isTablet ? '18.8%' : '31.6%',
+    marginBottom: 12,
+  },
+
+  moduleCard: {
+    minHeight: 118,
+    borderRadius: 22,
+    paddingHorizontal: 9,
+    paddingTop: 13,
+    paddingBottom: 10,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E6EEF5',
+    overflow: 'hidden',
+
+    shadowColor: '#003D73',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 5,
+  },
+
+  moduleAccent: {
+    position: 'absolute',
+    top: -20,
+    right: -20,
+    width: 72,
+    height: 72,
+    borderRadius: 40,
+    //backgroundColor: 'rgba(9, 95, 224, 0.13)',
+  },
+
+  moduleIconOuter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  moduleIconBox: {
+    width: 46,
+    height: 46,
+    borderRadius: 18,
+    backgroundColor: '#EAF4FA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#D7EAF5',
+  },
+
+  moduleTitle: {
+    color: '#16324F',
+    fontSize: 13.5,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginTop: 10,
+    lineHeight: 15,
+    minHeight: 30,
+  },
+
+  moduleFooter: {
+    marginTop: 7,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F2F8EE',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+
+  moduleSubTitle: {
+    color: '#67BC45',
+    fontSize: 10,
+    fontWeight: '800',
+    marginRight: 3,
+  },
+
+  emptyModuleBox: {
+    paddingVertical: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  emptyModuleText: {
+    marginTop: 8,
+    color: '#94A3B8',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  offlineCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderRadius: 18,
+    padding: 13,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+
+  offlineText: {
+    flex: 1,
+    marginLeft: 10,
+    color: '#B91C1C',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  pendingVisitCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 22,
+    padding: 14,
+    marginBottom: 16,
+
+    shadowColor: '#003D73',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 4,
+  },
+
+  pendingIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    backgroundColor: '#E8F2F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+
+  pendingTitle: {
+    color: '#16324F',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+
+  pendingSubtitle: {
+    color: '#7B8A9B',
+    fontSize: 12,
+    marginTop: 3,
+    fontWeight: '600',
+  },
+
+  visitNowButton: {
+    backgroundColor: '#005696',
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+    borderRadius: 15,
+  },
+
+  visitNowText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+
+  metricGridCompact: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+
+  compactMetricCard: {
+    width: '31.7%',
+    minHeight: 92,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    marginBottom: 11,
+    borderWidth: 1,
+    borderColor: '#E3EDF5',
+
+    shadowColor: '#003D73',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.07,
+    shadowRadius: 14,
+    elevation: 3,
+  },
+
+  compactMetricTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+
+  compactMetricIconBox: {
+    width: 30,
+    height: 30,
+    borderRadius: 11,
+    backgroundColor: '#EAF4FA',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  compactMetricDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#67BC45',
+  },
+
+  compactMetricCount: {
+    color: '#102A43',
+    fontSize: 20,
+    fontWeight: '900',
+    letterSpacing: -0.3,
+  },
+
+  compactMetricTitle: {
+    color: '#60758A',
+    fontSize: 10.5,
+    fontWeight: '800',
+    marginTop: 3,
+    lineHeight: 13,
+  },
+  dashboardSwipeEdge: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 34,
+    zIndex: 50,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+
+  dashboardSwipePill: {
+    width: 28,
+    height: 78,
+    borderTopRightRadius: 18,
+    borderBottomRightRadius: 18,
+    backgroundColor: '#005696',
+    alignItems: 'center',
+    justifyContent: 'center',
+
+    shadowColor: '#003D73',
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    elevation: 7,
+  },
+
+  dashboardTabLayer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 100,
+  },
+
+  dashboardTabBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#000000',
+  },
+
+  dashboardTabPanel: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: '#F5F8FB',
+    borderTopLeftRadius: 28,
+    borderBottomLeftRadius: 28,
+    overflow: 'hidden',
+
+    shadowColor: '#000000',
+    shadowOffset: { width: -8, height: 0 },
+    shadowOpacity: 0.22,
+    shadowRadius: 18,
+    elevation: 12,
+  },
+
+  dashboardTabHeader: {
+    paddingTop: 18,
+    paddingHorizontal: 18,
+    paddingBottom: 14,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E3EDF5',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+
+  dashboardTabLabel: {
+    color: '#67BC45',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+
+  dashboardTabTitle: {
+    color: '#102A43',
+    fontSize: 19,
+    fontWeight: '900',
+    marginTop: 3,
+  },
+
+  dashboardTabCloseBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 14,
+    backgroundColor: '#EAF4FA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#D7EAF5',
+  },
+
+  dashboardTabContent: {
+    padding: 14,
+    paddingBottom: 40,
+  },
+  dashboardSwipeEdgeRight: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 34,
+    zIndex: 50,
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+  },
+
+  dashboardSwipePillRight: {
+    width: 28,
+    height: 78,
+    borderTopLeftRadius: 18,
+    borderBottomLeftRadius: 18,
+    backgroundColor: '#005696',
+    alignItems: 'center',
+    justifyContent: 'center',
+
+    shadowColor: '#003D73',
+    shadowOffset: { width: -4, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    elevation: 7,
+  },
+  dashboardCorporateBody: {
+    width: '100%',
+    paddingBottom: 20,
+  },
+
+  corporateSectionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    padding: 14,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#E2EDF5',
+
+    shadowColor: '#003D73',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 4,
+  },
+
+  corporateSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 13,
+  },
+
+  corporateSectionTitleWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+
+  corporateSectionIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 14,
+    backgroundColor: '#EAF4FA',
+    borderWidth: 1,
+    borderColor: '#D7EAF5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+
+  corporateSectionTitle: {
+    color: '#102A43',
+    fontSize: 15.5,
+    fontWeight: '900',
+  },
+
+  corporateSectionSubtitle: {
+    color: '#7A8CA0',
+    fontSize: 11.5,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+
+  corporateSectionAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EAF4FA',
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#D7EAF5',
+    marginLeft: 8,
+  },
+
+  corporateSectionActionText: {
+    color: '#005696',
+    fontSize: 11,
+    fontWeight: '900',
+    marginRight: 3,
+  },
+
+  corporateChartScroll: {
+    paddingRight: 8,
+  },
+
+  corporateBarChartBox: {
+    backgroundColor: '#F8FBFD',
+    borderRadius: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: '#E8F0F6',
+  },
+
+  corporateAxisLabel: {
+    color: '#64748B',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+
+  corporateYAxisLabel: {
+    color: '#64748B',
+    fontSize: 9,
+    fontWeight: '700',
+  },
+
+  achievementTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+
+  achievementScoreBox: {
+    backgroundColor: '#F2F8EE',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#DDF1D5',
+  },
+
+  achievementScore: {
+    color: '#238848',
+    fontSize: 22,
+    fontWeight: '900',
+  },
+
+  achievementScoreLabel: {
+    color: '#6B7C8F',
+    fontSize: 10.5,
+    fontWeight: '800',
+    marginTop: 1,
+  },
+
+  corporateDropdownSmall: {
+    width: 120,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: '#F8FBFD',
+    borderWidth: 1,
+    borderColor: '#DCE8F1',
+    paddingHorizontal: 10,
+  },
+
+  achievementChartBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+  },
+
+  pieCenterLabel: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  pieCenterValue: {
+    color: '#102A43',
+    fontSize: 20,
+    fontWeight: '900',
+  },
+
+  pieCenterText: {
+    color: '#7A8CA0',
+    fontSize: 10,
+    fontWeight: '800',
+    marginTop: 1,
+  },
+
+  corporateLegendRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 14,
+    marginTop: 8,
+  },
+
+  corporateLegendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  corporateLegendDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    marginRight: 6,
+  },
+
+  corporateLegendText: {
+    color: '#60758A',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+
+  corporateDropdown: {
+    height: 46,
+    borderRadius: 15,
+    backgroundColor: '#F8FBFD',
+    borderWidth: 1,
+    borderColor: '#DCE8F1',
+    paddingHorizontal: 12,
+  },
+
+  incentiveSummaryCard: {
+    marginTop: 12,
+    backgroundColor: '#F2F8EE',
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#DDF1D5',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+
+  incentiveLabel: {
+    color: '#60758A',
+    fontSize: 11.5,
+    fontWeight: '800',
+  },
+
+  incentiveValue: {
+    color: '#238848',
+    fontSize: 22,
+    fontWeight: '900',
+    marginTop: 3,
+  },
+
+  incentiveIconBox: {
+    width: 42,
+    height: 42,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  corporatePrimaryButton: {
+    marginTop: 12,
+    height: 45,
+    borderRadius: 15,
+    backgroundColor: '#005696',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+  },
+
+  corporatePrimaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '900',
+    marginRight: 7,
+  },
+
+  corporateNoticeCard: {
+    backgroundColor: '#F8FBFD',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#E4EDF3',
+    overflow: 'hidden',
+    marginBottom: 10,
+  },
+
+  corporateNoticeImage: {
+    width: '100%',
+    height: 135,
+  },
+
+  corporateNoticeBody: {
+    flexDirection: 'row',
+    padding: 12,
+  },
+
+  corporateNoticeIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: '#EAF4FA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+
+  corporateNoticeTitle: {
+    color: '#102A43',
+    fontSize: 13.5,
+    fontWeight: '900',
+  },
+
+  corporateNoticeText: {
+    color: '#60758A',
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 4,
+  },
+
+  corporateNoticeMeta: {
+    color: '#005696',
+    fontSize: 11,
+    fontWeight: '800',
+    marginTop: 5,
+  },
+
+  corporateSearchBox: {
+    height: 44,
+    borderRadius: 15,
+    backgroundColor: '#F8FBFD',
+    borderWidth: 1,
+    borderColor: '#DCE8F1',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    marginBottom: 12,
+  },
+
+  corporateSearchInput: {
+    flex: 1,
+    marginLeft: 8,
+    color: '#102A43',
+    fontSize: 13,
+    fontWeight: '700',
+    paddingVertical: 8,
+  },
+
+  corporateTable: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E2EDF5',
+    backgroundColor: '#FFFFFF',
+  },
+
+  corporateTableHeader: {
+    flexDirection: 'row',
+    backgroundColor: '#EAF4FA',
+    borderBottomWidth: 1,
+    borderBottomColor: '#D7EAF5',
+  },
+
+  corporateHeaderCell: {
+    paddingVertical: 11,
+    paddingHorizontal: 10,
+    color: '#005696',
+    fontSize: 11,
+    fontWeight: '900',
+  },
+
+  corporateTableRow: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEF3F7',
+  },
+
+  corporateCell: {
+    minHeight: 48,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    color: '#475569',
+    fontSize: 11.5,
+    fontWeight: '700',
+    justifyContent: 'center',
+  },
+
+  corporateNameCell: {
+    minHeight: 48,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  corporateNameText: {
+    color: '#102A43',
+    fontSize: 11.8,
+    fontWeight: '900',
+    flex: 1,
+  },
+
+  corporatePhoneText: {
+    color: '#005696',
+    fontSize: 11.5,
+    fontWeight: '900',
+  },
+
+  corporateViewBtn: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#EAF4FA',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#D7EAF5',
+  },
+
+  corporateViewBtnText: {
+    color: '#005696',
+    fontSize: 11,
+    fontWeight: '900',
+  },
+
+  corporatePagination: {
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+
+  paginationBtn: {
+    minHeight: 36,
+    paddingHorizontal: 10,
+    borderRadius: 13,
+    backgroundColor: '#005696',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  paginationBtnDisabled: {
+    backgroundColor: '#CBD5E1',
+  },
+
+  paginationBtnText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '900',
+    marginHorizontal: 3,
+  },
+
+  paginationText: {
+    color: '#60758A',
+    fontSize: 11.5,
+    fontWeight: '800',
+  },
+
+  corporateEmptyState: {
+    paddingVertical: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  corporateEmptyText: {
+    color: '#94A3B8',
+    fontSize: 12.5,
+    fontWeight: '800',
+    marginTop: 7,
+  },
+  achievementCorporateCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    padding: 14,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#E2EDF5',
+
+    shadowColor: '#003D73',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 4,
+  },
+
+  achievementCorporateHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+
+  achievementCorporateTitleWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+
+  achievementCorporateIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 14,
+    backgroundColor: '#EAF4FA',
+    borderWidth: 1,
+    borderColor: '#D7EAF5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+
+  achievementCorporateTitle: {
+    color: '#102A43',
+    fontSize: 15.5,
+    fontWeight: '900',
+  },
+
+  achievementCorporateSubtitle: {
+    color: '#7A8CA0',
+    fontSize: 11.5,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+
+  achievementDropdownStable: {
+    width: 112,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: '#F8FBFD',
+    borderWidth: 1,
+    borderColor: '#DCE8F1',
+    paddingHorizontal: 10,
+    marginLeft: 8,
+  },
+
+  achievementSummaryRow: {
+    flexDirection: 'row',
+    marginBottom: 10,
+  },
+
+  achievementPercentBox: {
+    width: 105,
+    backgroundColor: '#F2F8EE',
+    borderRadius: 18,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#DDF1D5',
+    justifyContent: 'center',
+  },
+
+  achievementPercentText: {
+    color: '#238848',
+    fontSize: 25,
+    fontWeight: '900',
+    lineHeight: 30,
+  },
+
+  achievementPercentLabel: {
+    color: '#60758A',
+    fontSize: 10.5,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+
+  achievementAmountBox: {
+    flex: 1,
+    marginLeft: 10,
+    backgroundColor: '#F8FBFD',
+    borderRadius: 18,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E4EDF3',
+  },
+
+  achievementAmountLabel: {
+    color: '#7A8CA0',
+    fontSize: 10.5,
+    fontWeight: '800',
+  },
+
+  achievementAmountValue: {
+    color: '#102A43',
+    fontSize: 15,
+    fontWeight: '900',
+    marginTop: 2,
+  },
+
+  achievementTargetValue: {
+    color: '#005696',
+    fontSize: 15,
+    fontWeight: '900',
+    marginTop: 2,
+  },
+
+  achievementAmountDivider: {
+    height: 1,
+    backgroundColor: '#E2EDF5',
+    marginVertical: 8,
+  },
+
+  achievementPieStableArea: {
+    width: '100%',
+    height: 285,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+
+  achievementPieCenter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  achievementPieCenterValue: {
+    color: '#102A43',
+    fontSize: 22,
+    fontWeight: '900',
+  },
+
+  achievementPieCenterText: {
+    color: '#7A8CA0',
+    fontSize: 10.5,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+
+  achievementLegendStable: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+
+  achievementLegendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 8,
+  },
+
+  achievementLegendDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    marginRight: 6,
+  },
+
+  achievementLegendText: {
+    color: '#60758A',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  visitChartStableCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    padding: 14,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#E2EDF5',
+
+    shadowColor: '#003D73',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 4,
+  },
+
+  visitChartHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+
+  visitChartTitleWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+
+  visitChartIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 14,
+    backgroundColor: '#EAF4FA',
+    borderWidth: 1,
+    borderColor: '#D7EAF5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+
+  visitChartTitle: {
+    color: '#102A43',
+    fontSize: 15.5,
+    fontWeight: '900',
+  },
+
+  visitChartSubtitle: {
+    color: '#7A8CA0',
+    fontSize: 11.5,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+
+  visitChartScroll: {
+    paddingRight: 8,
+  },
+
+  visitChartBox: {
+    height: 265,
+    backgroundColor: '#F8FBFD',
+    borderRadius: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: '#E8F0F6',
+    overflow: 'hidden',
+  },
+
+  chartTopLabel: {
+    color: '#005696',
+    fontSize: 11,
+    fontWeight: '900',
+  },
+
+  teamStableCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    padding: 14,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#E2EDF5',
+
+    shadowColor: '#003D73',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 4,
+  },
+
+  teamStableHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+
+  teamStableTitleWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+
+  teamStableIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 14,
+    backgroundColor: '#EAF4FA',
+    borderWidth: 1,
+    borderColor: '#D7EAF5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+
+  teamStableTitle: {
+    color: '#102A43',
+    fontSize: 15.5,
+    fontWeight: '900',
+  },
+
+  teamStableSubtitle: {
+    color: '#7A8CA0',
+    fontSize: 11.5,
+    fontWeight: '700',
+    marginTop: 2,
   },
 });

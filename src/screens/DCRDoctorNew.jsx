@@ -21,32 +21,32 @@ import {
   PermissionsAndroid,
   ActivityIndicator,
 } from 'react-native';
-import React, {useEffect, useState, useCallback, useRef} from 'react';
-import {openDatabase} from 'react-native-sqlite-storage';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { openDatabase } from 'react-native-sqlite-storage';
 import moment from 'moment';
 import {
   isLocationEnabled,
   promptForEnableLocationIfNeeded,
 } from 'react-native-android-location-enabler';
-import {openSettings} from 'react-native-permissions';
+import { openSettings } from 'react-native-permissions';
 import DeviceInfo from 'react-native-device-info';
 import Geolocation from '@react-native-community/geolocation';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AntDesign from 'react-native-vector-icons/AntDesign';
-import {MultipleSelectList} from 'react-native-dropdown-select-list';
-import {SelectList} from 'react-native-dropdown-select-list';
-import {Dropdown} from 'react-native-element-dropdown';
+import { MultipleSelectList } from 'react-native-dropdown-select-list';
+import { SelectList } from 'react-native-dropdown-select-list';
+import { Dropdown } from 'react-native-element-dropdown';
 import axios from 'axios';
 import CustomButton from '../components/custom/CustomButton';
-import {FlatList} from 'react-native';
-import {BASE_URL, url} from '@env';
+import { FlatList } from 'react-native';
+import { BASE_URL, url } from '@env';
 import NetInfo from '@react-native-community/netinfo';
 import CustomDCR from '../components/custom/CustomDCR';
 import ProgressDialog from '../components/custom/ProgressDialog';
 import Snackbar from 'react-native-snackbar';
-import MapView, {PROVIDER_GOOGLE, Marker, Circle} from 'react-native-maps';
-import {useFocusEffect} from '@react-navigation/native';
+import MapView, { PROVIDER_GOOGLE, Marker, Circle } from 'react-native-maps';
+import { useFocusEffect } from '@react-navigation/native';
 import KeyboardAwareLayout from '../components/custom/KeyboardAwareLayout';
 import FastImage from 'react-native-fast-image';
 import Voice from '@react-native-voice/voice';
@@ -58,12 +58,12 @@ import RNFS from 'react-native-fs';
 import Pdf from 'react-native-pdf';
 import LottieView from 'lottie-react-native';
 import DoctorDetailsModal from './DoctorDetailsModal';
-import {WebView} from 'react-native-webview';
+import { WebView } from 'react-native-webview';
 //import Sound from 'react-native-sound';
-import {bengaliToEnglish} from './bengaliToEnglish';
-import {tr} from 'date-fns/locale';
-import {log} from 'console';
-const {width, height} = Dimensions.get('window');
+import { bengaliToEnglish } from './bengaliToEnglish';
+import { tr } from 'date-fns/locale';
+import { log } from 'console';
+const { width, height } = Dimensions.get('window');
 const db = openDatabase(
   {
     name: 'CRM_db',
@@ -75,7 +75,7 @@ const db = openDatabase(
   error => console.log('Database error', error), //on error
 );
 
-const DCRDoctorNew = ({navigation}) => {
+const DCRDoctorNew = ({ navigation }) => {
   const [currentLongitude, setCurrentLongitude] = useState('0.00');
   const [currentLatitude, setCurrentLatitude] = useState('0.00');
   const [locationStatus, setLocationStatus] = useState('');
@@ -341,7 +341,7 @@ const DCRDoctorNew = ({navigation}) => {
       if (!gpsEnabled) {
         await promptForEnableLocationIfNeeded();
       }
-    } catch {}
+    } catch { }
 
     setTimeout(() => {
       getCurrentLocation(); // first fast fix
@@ -585,7 +585,7 @@ const DCRDoctorNew = ({navigation}) => {
         if (!gpsEnabled) {
           promptForEnableLocationIfNeeded();
         }
-      } catch {}
+      } catch { }
     }
   };
 
@@ -768,7 +768,7 @@ const DCRDoctorNew = ({navigation}) => {
             },
           },
         ],
-        {cancelable: false},
+        { cancelable: false },
       );
     } else {
       if (useManagerAccess === true) {
@@ -792,7 +792,10 @@ const DCRDoctorNew = ({navigation}) => {
           Alert.alert('Select Doctor');
         } else if (usevisitWTData.length === 0) {
           Alert.alert('Select Visit With');
-        } else if (sampleQtyData.length === 0) {
+        } else if (
+          useBusinessID !== 'INICIO-LAB-682' &&
+          sampleQtyData.length === 0
+        ) {
           Alert.alert('Select Sample & Qty');
         } else if (useRemarks === '') {
           Alert.alert('Type Remarks');
@@ -978,7 +981,7 @@ const DCRDoctorNew = ({navigation}) => {
                   user.BusinessID +
                   '&IDEmployee=' +
                   user.IDEmployee;
-                //console.log(vwturl);
+                console.log('Visit WT URL:', vwturl);
                 var config = {
                   method: 'get',
                   url: vwturl,
@@ -1053,8 +1056,8 @@ const DCRDoctorNew = ({navigation}) => {
               try {
                 const response = await fetch(
                   BASE_URL +
-                    'Configuration/ConfigurationDetail?Businessid=' +
-                    user.BusinessID,
+                  'Configuration/ConfigurationDetail?Businessid=' +
+                  user.BusinessID,
                 );
 
                 const json = await response.json();
@@ -1835,7 +1838,7 @@ const DCRDoctorNew = ({navigation}) => {
 
         let result = await fetch(returl);
         result = await result.json();
-        console.log('doctorWiseProductListAPI',returl);
+        console.log('doctorWiseProductListAPI', returl);
         setdataProduct(result.d);
       } else {
         if (useManagerAccess === true) {
@@ -2240,8 +2243,7 @@ const DCRDoctorNew = ({navigation}) => {
       (lat2 === 0 && lon2 === 0)
     ) {
       console.log(
-        `[GPS] Skip: target is zero-like target=(${apiLat}, ${apiLong}) (docCode=${
-          docCode ?? '-'
+        `[GPS] Skip: target is zero-like target=(${apiLat}, ${apiLong}) (docCode=${docCode ?? '-'
         }, docName=${docName ?? '-'})`,
       );
       return;
@@ -2267,18 +2269,17 @@ const DCRDoctorNew = ({navigation}) => {
 
     // Validate current + radius
     if (![lat1, lon1, radius].every(Number.isFinite)) {
-      console.warn('Invalid inputs for distance calc:', {lat1, lon1, radius});
+      console.warn('Invalid inputs for distance calc:', { lat1, lon1, radius });
       return;
     }
 
     // --- 2) Debug log current/target
     console.log(
       `[GPS] now=${new Date().toISOString()} ` +
-        `current=(${lat1.toFixed(6)}, ${lon1.toFixed(6)}) ` +
-        `target=(${lat2.toFixed(6)}, ${lon2.toFixed(6)}) ` +
-        `acc=${
-          Number.isFinite(gpsAccuracy) ? Math.round(gpsAccuracy) + 'm' : 'n/a'
-        }`,
+      `current=(${lat1.toFixed(6)}, ${lon1.toFixed(6)}) ` +
+      `target=(${lat2.toFixed(6)}, ${lon2.toFixed(6)}) ` +
+      `acc=${Number.isFinite(gpsAccuracy) ? Math.round(gpsAccuracy) + 'm' : 'n/a'
+      }`,
     );
 
     // --- 3) Haversine (meters)
@@ -2293,7 +2294,7 @@ const DCRDoctorNew = ({navigation}) => {
     const metersRaw = R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
     const meters = Math.floor(metersRaw + 1e-6); // stabilize decimals like 150.076 -> 150
     setDistance(meters);
-    setCurrentLocation({Latitude: lat1, Longitude: lon1}); // UI only
+    setCurrentLocation({ Latitude: lat1, Longitude: lon1 }); // UI only
 
     // --- 4) Tolerance + HYSTERESIS (prevents in/out flapping near the edge)
     // Base cushion
@@ -2320,8 +2321,7 @@ const DCRDoctorNew = ({navigation}) => {
     lastInsideRef.current = inside;
 
     console.log(
-      `dist=${meters}m, radius=${radius}m, state=${
-        inside ? 'INSIDE' : 'OUTSIDE'
+      `dist=${meters}m, radius=${radius}m, state=${inside ? 'INSIDE' : 'OUTSIDE'
       }`,
     );
 
@@ -2341,7 +2341,7 @@ const DCRDoctorNew = ({navigation}) => {
 
     if (!inside) {
       setModalVisible(true);
-      setDoctorLocation({latitude: lat2, longitude: lon2});
+      setDoctorLocation({ latitude: lat2, longitude: lon2 });
       //setSelectedProduct('');
       setdoctorData([]); // Clear doctor data when outside geofence
       setSelectedDoctor(null);
@@ -2439,7 +2439,7 @@ const DCRDoctorNew = ({navigation}) => {
     const hasCoords =
       Number.isFinite(lat) && Number.isFinite(lon) && !(lat === 0 && lon === 0);
 
-    setSelectedDoctorCoords(hasCoords ? {lat, lon} : null);
+    setSelectedDoctorCoords(hasCoords ? { lat, lon } : null);
 
     setSelectedDoctorMeta({
       code: item.IDDoctor,
@@ -2477,7 +2477,7 @@ const DCRDoctorNew = ({navigation}) => {
       setsampleQtyData([
         ...sampleQtyData,
         //{key: Math.random().toString(), value: `${sLabel} ${useQty}`},
-        {key: useQty, label: sLabel, value: sValue},
+        { key: useQty, label: sLabel, value: sValue },
       ]);
 
       // Clear the inputs
@@ -2494,7 +2494,7 @@ const DCRDoctorNew = ({navigation}) => {
       setgiftQtyDataData([
         ...giftQtyData,
         //{key: Math.random().toString(), value: `${sLabel} ${useQty}`},
-        {key: useGQty, label: gLabel, value: gValue},
+        { key: useGQty, label: gLabel, value: gValue },
       ]);
 
       // Clear the inputs
@@ -2561,7 +2561,7 @@ const DCRDoctorNew = ({navigation}) => {
             },
           },
         ],
-        {cancelable: false},
+        { cancelable: false },
       );
     } else {
       if (useMobileAccess === 'ONLINE') {
@@ -2685,7 +2685,7 @@ const DCRDoctorNew = ({navigation}) => {
                 samplesProduct: SfStatus,
                 samplesProductQty: SProdID,
                 //visitWiths: Mvisitwith,
-                visitWiths: [{IDEmployee: useMvisitWTData}],
+                visitWiths: [{ IDEmployee: useMvisitWTData }],
                 entryUser: empEmail,
                 Remarks: useRemarks,
                 IDCampaign: idCampaign,
@@ -2730,7 +2730,7 @@ const DCRDoctorNew = ({navigation}) => {
                               navigation.navigate('AppNavDCRScreen'),
                           },
                         ],
-                        {cancelable: false},
+                        { cancelable: false },
                       );
                       //navigation.navigate('AppNavDCRScreen');
                       db.transaction(txn => {
@@ -2906,7 +2906,7 @@ const DCRDoctorNew = ({navigation}) => {
                               navigation.navigate('AppNavDCRScreen'),
                           },
                         ],
-                        {cancelable: false},
+                        { cancelable: false },
                       );
                       //navigation.navigate('AppNavDCRScreen');
                       db.transaction(txn => {
@@ -3227,7 +3227,7 @@ const DCRDoctorNew = ({navigation}) => {
             },
           },
         ],
-        {cancelable: false},
+        { cancelable: false },
       );
     } else {
       if (useManagerAccess === true) {
@@ -3241,7 +3241,7 @@ const DCRDoctorNew = ({navigation}) => {
         let campaign = [];
 
         useMvisitWTData.map(function (value) {
-          Mvisitwith.push({IDEmployee: value});
+          Mvisitwith.push({ IDEmployee: value });
         });
 
         if (sampleQtyData.length === 0) {
@@ -3278,14 +3278,14 @@ const DCRDoctorNew = ({navigation}) => {
         }
 
         usedataStage.map(function (value) {
-          curstageID.push({IDStage: value.IDStage});
+          curstageID.push({ IDStage: value.IDStage });
         });
         usedataStage.map(function (value) {
-          ProdID.push({IDProduct: value.IDProduct});
+          ProdID.push({ IDProduct: value.IDProduct });
         });
 
         usedataStage.map(function (valueMisc) {
-          fStatus.push({IDMisc: valueMisc.IDMisc});
+          fStatus.push({ IDMisc: valueMisc.IDMisc });
         });
 
         var countProdID = Object.keys(ProdID).length;
@@ -3357,7 +3357,7 @@ const DCRDoctorNew = ({navigation}) => {
                   onPress: () => navigation.navigate('AppNavDCRScreen'),
                 },
               ],
-              {cancelable: false},
+              { cancelable: false },
             );
           } else {
             db.transaction(txn => {
@@ -3389,7 +3389,7 @@ const DCRDoctorNew = ({navigation}) => {
         let fStatus = [];
 
         usevisitWTData.map(function (value) {
-          Mvisitwith.push({IDEmployee: value});
+          Mvisitwith.push({ IDEmployee: value });
         });
 
         if (sampleQtyData.length === 0) {
@@ -3427,14 +3427,14 @@ const DCRDoctorNew = ({navigation}) => {
         }
 
         usedataStage.map(function (value) {
-          curstageID.push({IDStage: value.IDStage});
+          curstageID.push({ IDStage: value.IDStage });
         });
         usedataStage.map(function (value) {
-          ProdID.push({IDProduct: value.IDProduct});
+          ProdID.push({ IDProduct: value.IDProduct });
         });
 
         usedataStage.map(function (valueMisc) {
-          fStatus.push({IDMisc: valueMisc.IDMisc});
+          fStatus.push({ IDMisc: valueMisc.IDMisc });
         });
 
         var countProdID = Object.keys(ProdID).length;
@@ -3506,7 +3506,7 @@ const DCRDoctorNew = ({navigation}) => {
                   onPress: () => navigation.navigate('AppNavDCRScreen'),
                 },
               ],
-              {cancelable: false},
+              { cancelable: false },
             );
           } else {
             db.transaction(txn => {
@@ -3621,7 +3621,7 @@ const DCRDoctorNew = ({navigation}) => {
     }, []);
   };
 
-  const renderProductItem = ({item}) => {
+  const renderProductItem = ({ item }) => {
     return (
       <View style={[style.cardContainer]}>
         {/* Product Name */}
@@ -3685,7 +3685,7 @@ const DCRDoctorNew = ({navigation}) => {
     );
   };
 
-  const rendervisualaids = ({item}) => {
+  const rendervisualaids = ({ item }) => {
     return (
       <TouchableOpacity
         activeOpacity={0.85}
@@ -3750,21 +3750,21 @@ const DCRDoctorNew = ({navigation}) => {
           elevation: 2,
           borderRadius: 1,
         }}>
-        <View style={{flexDirection: 'row', alignItems: 'center', padding: 10}}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', padding: 10 }}>
           {/* Big Location Icon */}
           <Ionicons
             name="location-outline"
             size={40}
             color="#005696"
-            style={{marginRight: 12}}
+            style={{ marginRight: 12 }}
           />
 
           {/* Latitude & Longitude */}
           <View>
-            <Text style={{fontSize: 16, paddingVertical: 2}}>
+            <Text style={{ fontSize: 16, paddingVertical: 2 }}>
               Lat : {currentLatitude}
             </Text>
-            <Text style={{fontSize: 16, paddingVertical: 2}}>
+            <Text style={{ fontSize: 16, paddingVertical: 2 }}>
               Long : {currentLongitude}
             </Text>
           </View>
@@ -3776,7 +3776,7 @@ const DCRDoctorNew = ({navigation}) => {
               source={require('../assets/inside_page_loader.json')}
               autoPlay
               loop
-              style={{width: 150, height: 150}}
+              style={{ width: 150, height: 150 }}
             />
             <Text style={style.loadingText}>Loading...</Text>
           </View>
@@ -3872,7 +3872,7 @@ const DCRDoctorNew = ({navigation}) => {
                 marginLeft: 5,
                 marginRight: 5,
               }}>
-              <View style={{marginBottom: 5, paddingBottom: 5}}>
+              <View style={{ marginBottom: 5, paddingBottom: 5 }}>
                 <MultipleSelectList
                   setSelected={val => setMvisitWTData(val)}
                   data={useMvisitWTDataSelected}
@@ -3882,8 +3882,8 @@ const DCRDoctorNew = ({navigation}) => {
                   onSelect={() => multiSelectVisitWith()}
                   fontFamily="Roboto-Bold"
                   notFoundText="No Data Exists"
-                  badgeStyles={{backgroundColor: 'green'}}
-                  labelStyles={{fontWeight: '800', color: 'black'}}
+                  badgeStyles={{ backgroundColor: 'green' }}
+                  labelStyles={{ fontWeight: '800', color: 'black' }}
                 />
                 {/*<SelectList
                   setSelected={val => {
@@ -3899,9 +3899,9 @@ const DCRDoctorNew = ({navigation}) => {
                   dropdownStyles={{}}
                 />*/}
               </View>
-              <View style={{marginBottom: 5, paddingBottom: 5}}>
+              <View style={{ marginBottom: 5, paddingBottom: 5 }}>
                 <Dropdown
-                  style={[style.dropdown, isFocus && {borderColor: 'blue'}]}
+                  style={[style.dropdown, isFocus && { borderColor: 'blue' }]}
                   placeholderStyle={style.placeholderStyle}
                   selectedTextStyle={style.selectedTextStyle}
                   inputSearchStyle={style.inputSearchStyle}
@@ -4031,7 +4031,7 @@ const DCRDoctorNew = ({navigation}) => {
                   alignItems: 'center',
                 }}>
                 <Dropdown
-                  style={[style.dropdown1, isFocus && {borderColor: 'blue'}]}
+                  style={[style.dropdown1, isFocus && { borderColor: 'blue' }]}
                   placeholderStyle={style.placeholderStyle}
                   selectedTextStyle={style.selectedTextStyle}
                   inputSearchStyle={style.inputSearchStyle}
@@ -4114,9 +4114,9 @@ const DCRDoctorNew = ({navigation}) => {
                 marginLeft: 5,
                 marginRight: 5,
               }}>
-              <View style={{marginBottom: 5, paddingBottom: 5}}>
+              <View style={{ marginBottom: 5, paddingBottom: 5 }}>
                 <Dropdown
-                  style={[style.dropdown, isFocus && {borderColor: 'blue'}]}
+                  style={[style.dropdown, isFocus && { borderColor: 'blue' }]}
                   placeholderStyle={style.placeholderStyle}
                   selectedTextStyle={style.selectedTextStyle}
                   inputSearchStyle={style.inputSearchStyle}
@@ -4274,7 +4274,7 @@ const DCRDoctorNew = ({navigation}) => {
                   alignItems: 'center',
                 }}>
                 <Dropdown
-                  style={[style.dropdown1, isFocus && {borderColor: 'blue'}]}
+                  style={[style.dropdown1, isFocus && { borderColor: 'blue' }]}
                   placeholderStyle={style.placeholderStyle}
                   selectedTextStyle={style.selectedTextStyle}
                   inputSearchStyle={style.inputSearchStyle}
@@ -4311,7 +4311,7 @@ const DCRDoctorNew = ({navigation}) => {
                 </TouchableOpacity>
               </View>
 
-              <View style={{marginTop: 5, paddingTop: 5}}>
+              <View style={{ marginTop: 5, paddingTop: 5 }}>
                 <MultipleSelectList
                   setSelected={val => setvisitWTData(val)}
                   data={usevisitWTDataSelected}
@@ -4326,8 +4326,8 @@ const DCRDoctorNew = ({navigation}) => {
                   fontFamily="Roboto-Bold"
                   notFoundText="No Data Exists"
                   //badgeTextStyles={{color:'red'}}
-                  badgeStyles={{backgroundColor: 'green'}}
-                  labelStyles={{fontWeight: '800', color: 'black'}}
+                  badgeStyles={{ backgroundColor: 'green' }}
+                  labelStyles={{ fontWeight: '800', color: 'black' }}
                 />
               </View>
               <View
@@ -4370,8 +4370,8 @@ const DCRDoctorNew = ({navigation}) => {
 
       <View>
         {shouldShowSampleData ? (
-          <SafeAreaView style={{flex: 1}}>
-            <View style={{marginLeft: 5, marginRight: 5}}>
+          <SafeAreaView style={{ flex: 1 }}>
+            <View style={{ marginLeft: 5, marginRight: 5 }}>
               <CustomDCR
                 selectionMode={1}
                 option1="Sample"
@@ -4382,12 +4382,12 @@ const DCRDoctorNew = ({navigation}) => {
               />
             </View>
             {gamesTab == 1 && (
-              <View style={{margin: 10}}>
-                <View style={{flexDirection: 'row', alignItems: 'center'}}>
+              <View style={{ margin: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <Dropdown
                     style={[
                       style.dropdownNew,
-                      isFocus && {borderColor: 'blue', width: '50%'},
+                      isFocus && { borderColor: 'blue', width: '50%' },
                     ]}
                     placeholderStyle={style.placeholderStyle}
                     selectedTextStyle={style.selectedTextStyle}
@@ -4546,7 +4546,7 @@ const DCRDoctorNew = ({navigation}) => {
                   )}
                 /> */}
                 {sampleQtyData && sampleQtyData.length > 0 ? (
-                  <View style={{marginTop: 10, marginHorizontal: 8}}>
+                  <View style={{ marginTop: 10, marginHorizontal: 8 }}>
                     {/* 🔹 Table Header */}
                     <View
                       style={{
@@ -4618,7 +4618,7 @@ const DCRDoctorNew = ({navigation}) => {
                     <FlatList
                       data={sampleQtyData}
                       keyExtractor={(item, index) => index.toString()}
-                      renderItem={({item, index}) => (
+                      renderItem={({ item, index }) => (
                         <TouchableWithoutFeedback>
                           <View
                             style={{
@@ -4696,12 +4696,12 @@ const DCRDoctorNew = ({navigation}) => {
               </View>
             )}
             {gamesTab == 2 && (
-              <View style={{margin: 10}}>
-                <View style={{flexDirection: 'row', alignItems: 'center'}}>
+              <View style={{ margin: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <Dropdown
                     style={[
                       style.dropdownNew,
-                      isFocus && {borderColor: 'blue', width: '50%'},
+                      isFocus && { borderColor: 'blue', width: '50%' },
                     ]}
                     placeholderStyle={style.placeholderStyle}
                     selectedTextStyle={style.selectedTextStyle}
@@ -4859,7 +4859,7 @@ const DCRDoctorNew = ({navigation}) => {
                 /> */}
 
                 {giftQtyData && giftQtyData.length > 0 ? (
-                  <View style={{marginTop: 10, marginHorizontal: 8}}>
+                  <View style={{ marginTop: 10, marginHorizontal: 8 }}>
                     {/* 🔹 Table Header */}
                     <View
                       style={{
@@ -4931,7 +4931,7 @@ const DCRDoctorNew = ({navigation}) => {
                     <FlatList
                       data={giftQtyData}
                       keyExtractor={(item, index) => index.toString()}
-                      renderItem={({item, index}) => (
+                      renderItem={({ item, index }) => (
                         <TouchableWithoutFeedback>
                           <View
                             style={{
@@ -5008,7 +5008,7 @@ const DCRDoctorNew = ({navigation}) => {
               </View>
             )}
             {gamesTab == 3 && (
-              <View style={{margin: 10}}>
+              <View style={{ margin: 10 }}>
                 <View
                   style={{
                     backgroundColor: '#ecf0f1',
@@ -5020,11 +5020,11 @@ const DCRDoctorNew = ({navigation}) => {
                     elevation: 2,
                     borderRadius: 1,
                   }}>
-                  <View style={{flexDirection: 'row'}}>
+                  <View style={{ flexDirection: 'row' }}>
                     <Dropdown
                       style={[
                         style.dropdownNew,
-                        isFocus && {borderColor: 'blue', width: '50%'},
+                        isFocus && { borderColor: 'blue', width: '50%' },
                       ]}
                       placeholderStyle={style.placeholderStyle}
                       selectedTextStyle={style.selectedTextStyle}
@@ -5049,7 +5049,7 @@ const DCRDoctorNew = ({navigation}) => {
                     <Dropdown
                       style={[
                         style.dropdownNew,
-                        isFocus && {borderColor: 'blue', width: '50%'},
+                        isFocus && { borderColor: 'blue', width: '50%' },
                       ]}
                       placeholderStyle={style.placeholderStyle}
                       selectedTextStyle={style.selectedTextStyle}
@@ -5086,13 +5086,13 @@ const DCRDoctorNew = ({navigation}) => {
                       value={useCRemarks}
                       style={[
                         style.textInput,
-                        {width: '40%', alignItems: 'center', marginRight: 5},
+                        { width: '40%', alignItems: 'center', marginRight: 5 },
                       ]}
                       placeholder="Remarks"
                       placeholderTextColor="#555"
                       onChangeText={text => setCRemarks(text)}
                       multiline={true}
-                      //numberOfLines={3}
+                    //numberOfLines={3}
                     />
                     <TouchableOpacity
                       style={{
@@ -5242,7 +5242,7 @@ const DCRDoctorNew = ({navigation}) => {
                   )}
                 /> */}
                 {campaignData && campaignData.length > 0 ? (
-                  <View style={{marginTop: 10, marginHorizontal: 8}}>
+                  <View style={{ marginTop: 10, marginHorizontal: 8 }}>
                     {/* 🔹 Table Header */}
                     <View
                       style={{
@@ -5330,7 +5330,7 @@ const DCRDoctorNew = ({navigation}) => {
                     <FlatList
                       data={campaignData}
                       keyExtractor={(item, index) => index.toString()}
-                      renderItem={({item, index}) => (
+                      renderItem={({ item, index }) => (
                         <TouchableWithoutFeedback>
                           <View
                             style={{
@@ -5428,19 +5428,19 @@ const DCRDoctorNew = ({navigation}) => {
               </View>
             )}
             {gamesTab == 4 && (
-              <View style={{flex: 1, backgroundColor: '#f0f0f0'}}>
+              <View style={{ flex: 1, backgroundColor: '#f0f0f0' }}>
                 <FlatList
                   data={dataProduct}
                   keyExtractor={item => item.IDProduct?.toString()}
                   renderItem={rendervisualaids}
                   ListEmptyComponent={() => (
-                    <View style={{alignItems: 'center', marginTop: 50}}>
-                      <Text style={{fontSize: 16, color: 'gray'}}>
+                    <View style={{ alignItems: 'center', marginTop: 50 }}>
+                      <Text style={{ fontSize: 16, color: 'gray' }}>
                         No Data Found
                       </Text>
                     </View>
                   )}
-                  contentContainerStyle={{paddingBottom: 50}}
+                  contentContainerStyle={{ paddingBottom: 50 }}
                 />
               </View>
             )}
@@ -5458,13 +5458,13 @@ const DCRDoctorNew = ({navigation}) => {
                 keyExtractor={item => item.IDProduct?.toString()}
                 renderItem={renderProductItem}
                 ListEmptyComponent={() => (
-                  <View style={{alignItems: 'center', marginTop: 50}}>
-                    <Text style={{fontSize: 16, color: 'gray'}}>
+                  <View style={{ alignItems: 'center', marginTop: 50 }}>
+                    <Text style={{ fontSize: 16, color: 'gray' }}>
                       No Data Found
                     </Text>
                   </View>
                 )}
-                contentContainerStyle={{paddingBottom: 50}}
+                contentContainerStyle={{ paddingBottom: 50 }}
               />
             </TouchableWithoutFeedback>
             <CustomButton
@@ -5503,7 +5503,7 @@ const DCRDoctorNew = ({navigation}) => {
             <Text style={style.textLabel}>Doctor Name: {docName}</Text>
 
             {/* NEW: show current device location */}
-            <Text style={[style.textLabel, {color: 'blue'}]}>
+            <Text style={[style.textLabel, { color: 'blue' }]}>
               Your Location: Latitude: {fmt(currentLatitude)}, Longitude:{' '}
               {fmt(currentLongitude)}
             </Text>
@@ -5512,7 +5512,7 @@ const DCRDoctorNew = ({navigation}) => {
               typeof doctorLocation.latitude === 'number' &&
               typeof doctorLocation.longitude === 'number' && (
                 <>
-                  <Text style={[style.textLabel, {color: 'red'}]}>
+                  <Text style={[style.textLabel, { color: 'red' }]}>
                     Doctor Location: Latitude: {doctorLocation.latitude},
                     Longitude: {doctorLocation.longitude}
                   </Text>
@@ -5588,7 +5588,7 @@ const DCRDoctorNew = ({navigation}) => {
         visible={pdfVisible}
         animationType="slide"
         onRequestClose={() => setPdfVisible(false)}>
-        <View style={{flex: 1, backgroundColor: '#000'}}>
+        <View style={{ flex: 1, backgroundColor: '#000' }}>
           {/* Header */}
           <View
             style={{
@@ -5599,7 +5599,7 @@ const DCRDoctorNew = ({navigation}) => {
               paddingHorizontal: 12,
             }}>
             <TouchableOpacity onPress={() => setPdfVisible(false)}>
-              <Text style={{color: '#fff', fontSize: 16}}>Close</Text>
+              <Text style={{ color: '#fff', fontSize: 16 }}>Close</Text>
             </TouchableOpacity>
 
             <Text
@@ -5623,7 +5623,7 @@ const DCRDoctorNew = ({navigation}) => {
               <ActivityIndicator size="large" color="#fff" />
             </View>
           ) : (
-            <Pdf source={{uri: pdfUrl}} style={{flex: 1}} />
+            <Pdf source={{ uri: pdfUrl }} style={{ flex: 1 }} />
           )}
         </View>
       </Modal>
@@ -5954,7 +5954,7 @@ const style = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.08,
     shadowRadius: 6,
-    shadowOffset: {width: 0, height: 3},
+    shadowOffset: { width: 0, height: 3 },
   },
 
   vaLeft: {

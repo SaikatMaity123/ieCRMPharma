@@ -187,10 +187,10 @@ const LeaveScreen = () => {
           setCompanyId(1);
         } else {
           setCompanyId(0);
-          Alert.alert(
-            'Unknown Business',
-            `Unsupported Business ID: ${normalizedBusinessID}`,
-          );
+          // Alert.alert(
+          //   'Unknown Business',
+          //   `Unsupported Business ID: ${normalizedBusinessID}`,
+          // );
         }
         console.log('BusinessId:', normalizedBusinessID);
         // Log in console

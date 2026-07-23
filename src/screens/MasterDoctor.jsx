@@ -2149,7 +2149,7 @@ if (
                     paddingTop: 5,
                   }}>
                   {/* {useBusinessID === 'MEND-PVTL-890' ? ( */}
-                  <MultipleSelectList
+                  {/* <MultipleSelectList
                     setSelected={val => setType(val)}
                     data={useTypeSelected}
                     placeholder="Type"
@@ -2165,7 +2165,7 @@ if (
                     //badgeTextStyles={{color:'red'}}
                     badgeStyles={{backgroundColor: 'green'}}
                     labelStyles={{fontWeight: '800', color: 'black'}}
-                  />
+                  /> */}
                   {/* ) : null} */}
 
                   <View
@@ -2286,7 +2286,7 @@ if (
                 style={style.input}
               />
 
-              <MultipleSelectList
+              {/* <MultipleSelectList
                 setSelected={val => setType(val)}
                 data={useTypeSelected}
                 placeholder="Type"
@@ -2302,7 +2302,7 @@ if (
                 //badgeTextStyles={{color:'red'}}
                 badgeStyles={{backgroundColor: 'green'}}
                 labelStyles={{fontWeight: '800', color: 'black'}}
-              />
+              /> */}
 
               <Dropdown
                 style={[style.dropdown, isFocus && {borderColor: 'blue'}]}

@@ -257,7 +257,7 @@ const DCRDrawer = () => {
                 }
                 style={{ marginRight: 15 }}
               >
-                <Ionicons name="information-circle-outline" size={24} color="#fff" />
+                {/* <Ionicons name="information-circle-outline" size={24} color="#fff" /> */}
               </TouchableOpacity>
 
               {/* Back Icon */}

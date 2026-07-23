@@ -14,18 +14,19 @@ import {
   Button,
   StatusBar,
 } from 'react-native';
-import React, {useEffect, useState} from 'react';
-import {Dropdown} from 'react-native-element-dropdown';
+import React, { useEffect, useState } from 'react';
+import ModernProductModal from '../components/custom/ModernProductModal';
+import { Dropdown } from 'react-native-element-dropdown';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {BASE_URL} from '@env';
+import { BASE_URL } from '@env';
 import NetInfo from '@react-native-community/netinfo';
 import axios from 'axios';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import DeviceInfo from 'react-native-device-info';
-import {useFocusEffect} from '@react-navigation/native';
-import {BackHandler} from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { BackHandler } from 'react-native';
 import KeyboardAwareLayout from '../components/custom/KeyboardAwareLayout';
-const RCPAN = ({navigation}) => {
+const RCPAN = ({ navigation }) => {
   const [isFocus, setIsFocus] = useState(false);
   const [useBusinessID, setBusinessID] = useState('');
   const [empEmail, setEmpEmail] = useState('');
@@ -100,7 +101,7 @@ const RCPAN = ({navigation}) => {
         // Reset navigation if Add product is applied
         navigation.reset({
           index: 0,
-          routes: [{name: 'AppNavDCRScreen'}],
+          routes: [{ name: 'AppNavDCRScreen' }],
         });
         return true; // Prevent default back
       };
@@ -512,7 +513,7 @@ const RCPAN = ({navigation}) => {
               onPress: () => navigation.navigate('AppNavDCRScreen'),
             },
           ],
-          {cancelable: false},
+          { cancelable: false },
         );
       } else {
         Alert.alert(result.result);
@@ -797,7 +798,7 @@ const RCPAN = ({navigation}) => {
       setPackSize(jsonResponse.PackSize.toString());
       // Process and set data for the dropdown
       const dropdownData = [
-        {label: jsonResponse.Unit, value: jsonResponse.IDUnit},
+        { label: jsonResponse.Unit, value: jsonResponse.IDUnit },
       ];
       setUnit(dropdownData);
     } catch (error) {
@@ -813,7 +814,7 @@ const RCPAN = ({navigation}) => {
       useIDDivision +
       '&IDProduct=' +
       IDProduct;
-      console.log('fetchCUData URL:', url); // Log the URL for debugging
+    console.log('fetchCUData URL:', url); // Log the URL for debugging
     try {
       const response = await fetch(url);
       const jsonResponse = await response.json();
@@ -823,11 +824,11 @@ const RCPAN = ({navigation}) => {
       setPackSize(jsonResponse.PackSize.toString());
       // Process and set data for the dropdown
       const dropdownData = [
-        {label: jsonResponse.Unit, value: jsonResponse.IDUnit},
+        { label: jsonResponse.Unit, value: jsonResponse.IDUnit },
       ];
       setUnit(dropdownData);
       const dropdownCData = [
-        {label: jsonResponse.Company, value: jsonResponse.IDCompititor},
+        { label: jsonResponse.Company, value: jsonResponse.IDCompititor },
       ];
       setCompCompanyList(dropdownCData);
     } catch (error) {
@@ -982,9 +983,9 @@ const RCPAN = ({navigation}) => {
         }}>
         {showRData ? (
           <View>
-            <View style={{margin: 5, padding: 5}}>
+            <View style={{ margin: 5, padding: 5 }}>
               <Dropdown
-                style={[style.dropdown, isFocus && {borderColor: 'blue'}]}
+                style={[style.dropdown, isFocus && { borderColor: 'blue' }]}
                 placeholderStyle={style.placeholderStyle}
                 selectedTextStyle={style.selectedTextStyle}
                 inputSearchStyle={style.inputSearchStyle}
@@ -1011,9 +1012,9 @@ const RCPAN = ({navigation}) => {
                 }}
               />
             </View>
-            <View style={{marginLeft: 5, marginRight: 5, padding: 5}}>
+            <View style={{ marginLeft: 5, marginRight: 5, padding: 5 }}>
               <Dropdown
-                style={[style.dropdown, isFocus && {borderColor: 'blue'}]}
+                style={[style.dropdown, isFocus && { borderColor: 'blue' }]}
                 placeholderStyle={style.placeholderStyle}
                 selectedTextStyle={style.selectedTextStyle}
                 inputSearchStyle={style.inputSearchStyle}
@@ -1072,7 +1073,7 @@ const RCPAN = ({navigation}) => {
         ) : null}
 
         {showSData ? (
-          <View style={{margin: 5, padding: 5}}>
+          <View style={{ margin: 5, padding: 5 }}>
             <TextInput
               style={style.textInput}
               placeholder="Doctor"
@@ -1083,7 +1084,7 @@ const RCPAN = ({navigation}) => {
               value={useALabel}
               editable={false}
             />
-            <View style={{marginTop: 5, paddingTop: 5}}>
+            <View style={{ marginTop: 5, paddingTop: 5 }}>
               <TextInput
                 style={style.textInput}
                 placeholder="Retailer"
@@ -1096,9 +1097,9 @@ const RCPAN = ({navigation}) => {
               />
             </View>
 
-            <View style={{marginTop: 5, paddingTop: 5}}>
+            <View style={{ marginTop: 5, paddingTop: 5 }}>
               <Dropdown
-                style={[style.dropdown, isFocus && {borderColor: 'blue'}]}
+                style={[style.dropdown, isFocus && { borderColor: 'blue' }]}
                 placeholderStyle={style.placeholderStyle}
                 selectedTextStyle={style.selectedTextStyle}
                 inputSearchStyle={style.inputSearchStyle}
@@ -1123,12 +1124,12 @@ const RCPAN = ({navigation}) => {
                   fetchUData(item.value);
                 }}
               />
-              <View style={{flexDirection: 'row', marginTop: 10}}>
+              <View style={{ flexDirection: 'row', marginTop: 10 }}>
                 <TextInput
                   mode="outlined"
                   autoCapitalize="none"
                   autoCorrect={false}
-                  style={[style.textInput, {marginBottom: 5}]}
+                  style={[style.textInput, { marginBottom: 5 }]}
                   placeholder="Pack Size"
                   placeholderTextColor="#555"
                   inputMode="numeric"
@@ -1139,7 +1140,7 @@ const RCPAN = ({navigation}) => {
                 <Dropdown
                   style={[
                     style.dropdownNew,
-                    isFocus && {borderColor: 'blue', width: '50%'},
+                    isFocus && { borderColor: 'blue', width: '50%' },
                   ]}
                   placeholderStyle={style.placeholderStyle}
                   selectedTextStyle={style.selectedTextStyle}
@@ -1171,7 +1172,7 @@ const RCPAN = ({navigation}) => {
                 autoCapitalize="none"
                 autoCorrect={false}
                 inputMode="numeric"
-                style={[style.textInput, {marginBottom: 5}]}
+                style={[style.textInput, { marginBottom: 5 }]}
                 placeholder="MRP"
                 placeholderTextColor="#555"
                 value={useMRP}
@@ -1183,7 +1184,7 @@ const RCPAN = ({navigation}) => {
                 autoCapitalize="none"
                 autoCorrect={false}
                 inputMode="default"
-                style={[style.textInput, {marginBottom: 5}]}
+                style={[style.textInput, { marginBottom: 5 }]}
                 placeholder="LOT/SCHEME"
                 placeholderTextColor="#555"
                 value={useLot}
@@ -1194,7 +1195,7 @@ const RCPAN = ({navigation}) => {
                 mode="outlined"
                 autoCapitalize="none"
                 autoCorrect={false}
-                style={[style.textInput, {marginBottom: 5}]}
+                style={[style.textInput, { marginBottom: 5 }]}
                 placeholder="Rack Stock"
                 placeholderTextColor="#555"
                 value={useRackStock}
@@ -1292,7 +1293,7 @@ const RCPAN = ({navigation}) => {
         ) : null}
 
         {showCData ? (
-          <View style={{margin: 5, padding: 5}}>
+          <View style={{ margin: 5, padding: 5 }}>
             <TextInput
               style={style.textInput}
               placeholder="Doctor"
@@ -1303,7 +1304,7 @@ const RCPAN = ({navigation}) => {
               value={useALabel}
               editable={false}
             />
-            <View style={{marginTop: 5, paddingTop: 5}}>
+            <View style={{ marginTop: 5, paddingTop: 5 }}>
               <TextInput
                 style={style.textInput}
                 placeholder="Retailer"
@@ -1316,9 +1317,9 @@ const RCPAN = ({navigation}) => {
               />
             </View>
 
-            <View style={{marginTop: 5, paddingTop: 5}}>
+            <View style={{ marginTop: 5, paddingTop: 5 }}>
               <Dropdown
-                style={[style.dropdown, isFocus && {borderColor: 'blue'}]}
+                style={[style.dropdown, isFocus && { borderColor: 'blue' }]}
                 placeholderStyle={style.placeholderStyle}
                 selectedTextStyle={style.selectedTextStyle}
                 inputSearchStyle={style.inputSearchStyle}
@@ -1338,9 +1339,9 @@ const RCPAN = ({navigation}) => {
                   setSelfTProductName(item.label);
                 }}
               />
-              <View style={{marginTop: 5, paddingTop: 5, flexDirection: 'row'}}>
+              <View style={{ marginTop: 5, paddingTop: 5, flexDirection: 'row' }}>
                 <Dropdown
-                  style={[style.dropdownNew1, isFocus && {borderColor: 'blue'}]}
+                  style={[style.dropdownNew1, isFocus && { borderColor: 'blue' }]}
                   placeholderStyle={style.placeholderStyle}
                   selectedTextStyle={style.selectedTextStyle}
                   inputSearchStyle={style.inputSearchStyle}
@@ -1389,9 +1390,9 @@ const RCPAN = ({navigation}) => {
                   </Text>
                 </TouchableOpacity>
               </View>
-              <View style={{marginTop: 5, paddingTop: 5}}>
+              <View style={{ marginTop: 5, paddingTop: 5 }}>
                 <Dropdown
-                  style={[style.dropdown, isFocus && {borderColor: 'blue'}]}
+                  style={[style.dropdown, isFocus && { borderColor: 'blue' }]}
                   placeholderStyle={style.placeholderStyle}
                   selectedTextStyle={style.selectedTextStyle}
                   inputSearchStyle={style.inputSearchStyle}
@@ -1438,12 +1439,12 @@ const RCPAN = ({navigation}) => {
                   </Text>
                 </TouchableOpacity> */}
               </View>
-              <View style={{flexDirection: 'row', marginTop: 10}}>
+              <View style={{ flexDirection: 'row', marginTop: 10 }}>
                 <TextInput
                   mode="outlined"
                   autoCapitalize="none"
                   autoCorrect={false}
-                  style={[style.textInput, {marginBottom: 5}]}
+                  style={[style.textInput, { marginBottom: 5 }]}
                   placeholder="Pack Size"
                   placeholderTextColor="#555"
                   inputMode="numeric"
@@ -1454,7 +1455,7 @@ const RCPAN = ({navigation}) => {
                 <Dropdown
                   style={[
                     style.dropdownNew,
-                    isFocus && {borderColor: 'blue', width: '50%'},
+                    isFocus && { borderColor: 'blue', width: '50%' },
                   ]}
                   placeholderStyle={style.placeholderStyle}
                   selectedTextStyle={style.selectedTextStyle}
@@ -1486,7 +1487,7 @@ const RCPAN = ({navigation}) => {
                 autoCapitalize="none"
                 autoCorrect={false}
                 inputMode="numeric"
-                style={[style.textInput, {marginBottom: 5}]}
+                style={[style.textInput, { marginBottom: 5 }]}
                 placeholder="MRP"
                 placeholderTextColor="#555"
                 value={useMRP}
@@ -1498,7 +1499,7 @@ const RCPAN = ({navigation}) => {
                 autoCapitalize="none"
                 autoCorrect={false}
                 inputMode="default"
-                style={[style.textInput, {marginBottom: 5}]}
+                style={[style.textInput, { marginBottom: 5 }]}
                 placeholder="LOT/SCHEME"
                 placeholderTextColor="#555"
                 value={useLot}
@@ -1509,7 +1510,7 @@ const RCPAN = ({navigation}) => {
                 mode="outlined"
                 autoCapitalize="none"
                 autoCorrect={false}
-                style={[style.textInput, {marginBottom: 5}]}
+                style={[style.textInput, { marginBottom: 5 }]}
                 placeholder="Rack Stock"
                 placeholderTextColor="#555"
                 value={useRackStock}
@@ -1611,7 +1612,7 @@ const RCPAN = ({navigation}) => {
             transparent={true}
             //visible={visible}
             animationType="slide"
-            //onRequestClose={onClose}
+          //onRequestClose={onClose}
           >
             <View style={style.modalBackground}>
               <View style={style.modalContainer}>
@@ -1627,7 +1628,7 @@ const RCPAN = ({navigation}) => {
                   mode="outlined"
                   autoCapitalize="none"
                   autoCorrect={false}
-                  style={[style.textInput, {marginBottom: 5}]}
+                  style={[style.textInput, { marginBottom: 5 }]}
                   placeholder="Enter product name"
                   placeholderTextColor="#555"
                   value={useCompProdName}
@@ -1639,7 +1640,7 @@ const RCPAN = ({navigation}) => {
                   mode="outlined"
                   autoCapitalize="none"
                   autoCorrect={false}
-                  style={[style.textInput, {marginBottom: 5}]}
+                  style={[style.textInput, { marginBottom: 5 }]}
                   placeholder="Enter company name"
                   placeholderTextColor="#555"
                   value={useCompCompanyName}
@@ -1651,7 +1652,7 @@ const RCPAN = ({navigation}) => {
                   mode="outlined"
                   autoCapitalize="none"
                   autoCorrect={false}
-                  style={[style.textInput, {marginBottom: 5}]}
+                  style={[style.textInput, { marginBottom: 5 }]}
                   placeholder="Enter pack size"
                   placeholderTextColor="#555"
                   value={useCompAddPackSize}
@@ -1659,9 +1660,9 @@ const RCPAN = ({navigation}) => {
                   onChangeText={text => setCompAddPackSize(text)}
                 />
                 <Text style={style.label}>Unit</Text>
-                <View style={{marginBottom: 5, paddingBottom: 5}}>
+                <View style={{ marginBottom: 5, paddingBottom: 5 }}>
                   <Dropdown
-                    style={[style.dropdown, isFocus && {borderColor: 'blue'}]}
+                    style={[style.dropdown, isFocus && { borderColor: 'blue' }]}
                     placeholderStyle={style.placeholderStyle}
                     selectedTextStyle={style.selectedTextStyle}
                     inputSearchStyle={style.inputSearchStyle}
@@ -1708,7 +1709,7 @@ const RCPAN = ({navigation}) => {
             transparent={true}
             //visible={visible}
             animationType="slide"
-            //onRequestClose={onClose}
+          //onRequestClose={onClose}
           >
             <View style={style.modalBackground}>
               <View style={style.modalContainer}>
@@ -1724,7 +1725,7 @@ const RCPAN = ({navigation}) => {
                   mode="outlined"
                   autoCapitalize="none"
                   autoCorrect={false}
-                  style={[style.textInput, {marginBottom: 5}]}
+                  style={[style.textInput, { marginBottom: 5 }]}
                   placeholder="Enter company name"
                   placeholderTextColor="#555"
                   value={useCompCompanyName}
@@ -1749,24 +1750,323 @@ const RCPAN = ({navigation}) => {
           </Modal>
         ) : null}
         {isModalVisible ? (
+          // <Modal
+          //   transparent={true}
+          //   //visible={visible}
+          //   animationType="fade"
+          //   //onRequestClose={onClose}
+          // >
+          //   <View style={style.modalOverlay}>
+          //     <View style={style.modalContainer}>
+          //       <View style={{flexDirection: 'row'}}>
+          //         <Dropdown
+          //           style={[
+          //             style.dropdownNew,
+          //             isFocus && {borderColor: 'blue', width: '50%'},
+          //           ]}
+          //           placeholderStyle={style.placeholderStyle}
+          //           selectedTextStyle={style.selectedTextStyle}
+          //           inputSearchStyle={style.inputSearchStyle}
+          //           iconStyle={style.iconStyle}
+          //           data={useDoctor}
+          //           search
+          //           maxHeight={300}
+          //           labelField="label"
+          //           valueField="value"
+          //           placeholder={!isFocus ? 'Select Doctor ' : '...'}
+          //           searchPlaceholder="Search"
+          //           onFocus={() => setIsFocus(true)}
+          //           onBlur={() => setIsFocus(false)}
+          //           onChange={item => {
+          //             console.log(item.value);
+          //             setDLabel(item.label);
+          //             setDValue(item.value);
+          //             setIsFocus(false);
+          //             console.log(item.label);
+          //           }}
+          //         />
+          //         <TextInput
+          //           //label="Quantity"
+          //           mode="outlined"
+          //           autoCapitalize="none"
+          //           inputMode="numeric"
+          //           autoCorrect={false}
+          //           value={useQty}
+          //           // key={index}
+          //           // value={dataGift[index]}
+          //           style={[
+          //             style.textInput,
+          //             {
+          //               width: '40%',
+          //               alignItems: 'center',
+          //               marginBottom: 5,
+          //               marginLeft: 5,
+          //             },
+          //           ]}
+          //           placeholder="Weekly Qty"
+          //           placeholderTextColor="#555"
+          //           onChangeText={text => setQty(text)}
+          //         />
+          //       </View>
+
+          //       <View style={{flexDirection: 'row', alignSelf: 'center'}}>
+          //         {showCData ? (
+          //           <TouchableOpacity
+          //             style={{
+          //               backgroundColor: '#005696',
+          //               height: 50,
+          //               width: '30%',
+          //               padding: 5,
+          //               marginTop: 10,
+          //               borderRadius: 5,
+          //               flexDirection: 'row',
+          //             }}
+          //             onPress={() => addProductComp()}>
+          //             <Text
+          //               style={{
+          //                 textAlign: 'center',
+          //                 fontWeight: '700',
+          //                 fontSize: 18,
+          //                 marginLeft: 25,
+          //                 marginTop: 5,
+          //                 padding: 5,
+          //                 fontFamily: 'Lato-Regular',
+          //                 color: '#fff',
+          //               }}>
+          //               Add
+          //             </Text>
+          //           </TouchableOpacity>
+          //         ) : (
+          //           <TouchableOpacity
+          //             style={{
+          //               backgroundColor: '#005696',
+          //               height: 50,
+          //               width: '30%',
+          //               padding: 5,
+          //               marginTop: 10,
+          //               borderRadius: 5,
+          //               flexDirection: 'row',
+          //             }}
+          //             onPress={() => addProduct()}>
+          //             <Text
+          //               style={{
+          //                 textAlign: 'center',
+          //                 fontWeight: '700',
+          //                 fontSize: 18,
+          //                 marginLeft: 25,
+          //                 marginTop: 5,
+          //                 padding: 5,
+          //                 fontFamily: 'Lato-Regular',
+          //                 color: '#fff',
+          //               }}>
+          //               Add
+          //             </Text>
+          //           </TouchableOpacity>
+          //         )}
+
+          //         <TouchableOpacity
+          //           style={{
+          //             backgroundColor: '#005696',
+          //             height: 50,
+          //             width: '30%',
+          //             padding: 5,
+          //             marginTop: 10,
+          //             marginLeft: 5,
+          //             borderRadius: 5,
+          //             flexDirection: 'row',
+          //           }}
+          //           onPress={() => oncClose()}>
+          //           <Text
+          //             style={{
+          //               textAlign: 'center',
+          //               fontWeight: '700',
+          //               fontSize: 18,
+          //               marginLeft: 15,
+          //               marginTop: 5,
+          //               padding: 5,
+          //               fontFamily: 'Lato-Regular',
+          //               color: '#fff',
+          //             }}>
+          //             Close
+          //           </Text>
+          //         </TouchableOpacity>
+          //       </View>
+          //       <FlatList
+          //         data={uselfData}
+          //         keyExtractor={(item, index) => index.toString()}
+          //         renderItem={({item, index}) => (
+          //           <TouchableWithoutFeedback>
+          //             <View
+          //               style={[
+          //                 style.menu,
+          //                 {
+          //                   backgroundColor: '#ecf0f1',
+          //                   flexDirection: 'row',
+          //                 },
+          //               ]}>
+          //               <View
+          //                 style={{
+          //                   alignItems: 'center',
+          //                   justifyContent: 'center',
+          //                 }}>
+          //                 <AntDesign
+          //                   name="delete"
+          //                   size={30}
+          //                   color="red"
+          //                   onPress={() => {
+          //                     onDeleteSelf(index);
+          //                   }}
+          //                 />
+          //               </View>
+          //               <View
+          //                 style={{
+          //                   alignItems: 'center',
+          //                   justifyContent: 'center',
+          //                   margin: 5,
+          //                 }}>
+          //                 <View style={{flexDirection: 'row'}}>
+          //                   <Text
+          //                     style={{
+          //                       fontSize: 12,
+          //                       fontFamily: 'Lato-Regular',
+          //                       color: '#000',
+          //                       margin: 2,
+          //                       padding: 2,
+          //                       textAlignVertical: 'center',
+          //                     }}>
+          //                     DocName :{' '}
+          //                   </Text>
+          //                   <Text
+          //                     style={{
+          //                       fontSize: 14,
+          //                       fontFamily: 'Lato-Bold',
+          //                       color: '#000',
+          //                       textAlignVertical: 'center',
+          //                     }}>
+          //                     {item.docName}
+          //                   </Text>
+          //                 </View>
+          //                 <View
+          //                   style={{
+          //                     flexDirection: 'row',
+          //                   }}>
+          //                   <Text
+          //                     style={{
+          //                       fontSize: 12,
+          //                       fontFamily: 'Lato-Regular',
+          //                       color: '#000',
+          //                       margin: 2,
+          //                       padding: 2,
+          //                       textAlignVertical: 'center',
+          //                     }}>
+          //                     DocCode :{' '}
+          //                   </Text>
+          //                   <Text
+          //                     style={{
+          //                       fontSize: 14,
+          //                       fontFamily: 'Lato-Bold',
+          //                       color: '#000',
+          //                       textAlignVertical: 'center',
+          //                     }}>
+          //                     {item.docCode}
+          //                   </Text>
+          //                 </View>
+          //                 <View
+          //                   style={{
+          //                     flexDirection: 'row',
+          //                   }}>
+          //                   <Text
+          //                     style={{
+          //                       fontSize: 12,
+          //                       fontFamily: 'Lato-Regular',
+          //                       color: '#000',
+          //                       margin: 2,
+          //                       padding: 2,
+          //                       textAlignVertical: 'center',
+          //                     }}>
+          //                     Weekly Qty :{' '}
+          //                   </Text>
+          //                   <Text
+          //                     style={{
+          //                       fontSize: 14,
+          //                       fontFamily: 'Lato-Bold',
+          //                       color: '#000',
+          //                       textAlignVertical: 'center',
+          //                     }}>
+          //                     {item.Qty}
+          //                   </Text>
+          //                 </View>
+          //               </View>
+          //             </View>
+          //           </TouchableWithoutFeedback>
+          //         )}
+          //       />
+          //     </View>
+          //   </View>
+          // </Modal>
           <Modal
-            transparent={true}
-            //visible={visible}
+            transparent
             animationType="fade"
-            //onRequestClose={onClose}
           >
-            <View style={style.modalOverlay}>
-              <View style={style.modalContainer}>
-                <View style={{flexDirection: 'row'}}>
-                  <Dropdown
-                    style={[
-                      style.dropdownNew,
-                      isFocus && {borderColor: 'blue', width: '50%'},
-                    ]}
-                    placeholderStyle={style.placeholderStyle}
-                    selectedTextStyle={style.selectedTextStyle}
-                    inputSearchStyle={style.inputSearchStyle}
-                    iconStyle={style.iconStyle}
+            <View style={style.overlay}>
+              <View style={style.bottomSheet}>
+
+                {/* HEADER */}
+
+                <View style={style.header}>
+                  <View>
+                    <Text style={style.headerTitle}>
+                      Add Doctor
+                    </Text>
+
+                    <Text style={style.headerSubtitle}>
+                      Doctor Weekly Quantity
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={style.closeCircle}
+                    onPress={() => oncClose()}>
+                    <AntDesign
+                      name="close"
+                      size={22}
+                      color="#444"
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                {/* FORM */}
+
+                <View style={style.formCard}>
+
+                  <Text style={{
+                    fontSize: 15,
+                    fontWeight: '600',
+                    color: '#334155',
+                    marginBottom: 8,
+                  }}>
+                    Doctor
+                  </Text>
+
+                    <Dropdown
+                    style={style.dropdownModern}
+                    placeholderStyle={{
+                      fontSize: 15,
+                      color: '#94A3B8',
+                    }}
+                    selectedTextStyle={{
+                      fontSize: 15,
+                      color: '#0F172A',
+                      fontWeight: '600',
+                    }}
+                    inputSearchStyle={{
+                      height: 45,
+                      fontSize: 15,
+                    }}
+                    iconStyle={{
+                      width: 22,
+                      height: 22,
+                    }}
                     data={useDoctor}
                     search
                     maxHeight={300}
@@ -1784,222 +2084,173 @@ const RCPAN = ({navigation}) => {
                       console.log(item.label);
                     }}
                   />
-                  <TextInput
-                    //label="Quantity"
-                    mode="outlined"
-                    autoCapitalize="none"
-                    inputMode="numeric"
-                    autoCorrect={false}
-                    value={useQty}
-                    // key={index}
-                    // value={dataGift[index]}
-                    style={[
-                      style.textInput,
-                      {
-                        width: '40%',
-                        alignItems: 'center',
-                        marginBottom: 5,
-                        marginLeft: 5,
-                      },
-                    ]}
-                    placeholder="Weekly Qty"
-                    placeholderTextColor="#555"
-                    onChangeText={text => setQty(text)}
-                  />
-                </View>
 
-                <View style={{flexDirection: 'row', alignSelf: 'center'}}>
-                  {showCData ? (
-                    <TouchableOpacity
-                      style={{
-                        backgroundColor: '#005696',
-                        height: 50,
-                        width: '30%',
-                        padding: 5,
-                        marginTop: 10,
-                        borderRadius: 5,
-                        flexDirection: 'row',
-                      }}
-                      onPress={() => addProductComp()}>
-                      <Text
-                        style={{
-                          textAlign: 'center',
-                          fontWeight: '700',
-                          fontSize: 18,
-                          marginLeft: 25,
-                          marginTop: 5,
-                          padding: 5,
-                          fontFamily: 'Lato-Regular',
-                          color: '#fff',
-                        }}>
-                        Add
-                      </Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity
-                      style={{
-                        backgroundColor: '#005696',
-                        height: 50,
-                        width: '30%',
-                        padding: 5,
-                        marginTop: 10,
-                        borderRadius: 5,
-                        flexDirection: 'row',
-                      }}
-                      onPress={() => addProduct()}>
-                      <Text
-                        style={{
-                          textAlign: 'center',
-                          fontWeight: '700',
-                          fontSize: 18,
-                          marginLeft: 25,
-                          marginTop: 5,
-                          padding: 5,
-                          fontFamily: 'Lato-Regular',
-                          color: '#fff',
-                        }}>
-                        Add
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-
-                  <TouchableOpacity
-                    style={{
-                      backgroundColor: '#005696',
-                      height: 50,
-                      width: '30%',
-                      padding: 5,
-                      marginTop: 10,
-                      marginLeft: 5,
-                      borderRadius: 5,
-                      flexDirection: 'row',
+                  {/* <Dropdown
+                    
+                    data={useDoctor}
+                    search
+                    maxHeight={300}
+                    labelField="label"
+                    valueField="value"
+                    placeholder="Select Doctor"
+                    searchPlaceholder="Search Doctor"
+                    value={useDValue}
+                    onFocus={() => setIsFocus(true)}
+                    onBlur={() => setIsFocus(false)}
+                    onChange={item => {
+                      setDLabel(item.label);
+                      setDValue(item.value);
+                      setIsFocus(false);
                     }}
-                    onPress={() => oncClose()}>
-                    <Text
-                      style={{
-                        textAlign: 'center',
-                        fontWeight: '700',
-                        fontSize: 18,
-                        marginLeft: 15,
-                        marginTop: 5,
-                        padding: 5,
-                        fontFamily: 'Lato-Regular',
-                        color: '#fff',
-                      }}>
-                      Close
-                    </Text>
-                  </TouchableOpacity>
+                  /> */}
+
+                  <Text style={[style.labels, { marginTop: 18 }]}>
+                    Weekly Quantity
+                  </Text>
+
+                  <TextInput
+                    mode="outlined"
+                    value={useQty}
+                    keyboardType="number-pad"
+                    placeholder="Enter Weekly Qty"
+                    onChangeText={text => setQty(text)}
+                    style={style.qtyInput}
+                  />
+
+                  {/* BUTTONS */}
+
+                  <View style={style.buttonRow}>
+
+                    {showCData ? (
+                      <TouchableOpacity
+                        style={style.addButton}
+                        onPress={() => addProductComp()}>
+
+                        <AntDesign
+                          name="plus"
+                          size={18}
+                          color="#fff"
+                        />
+
+                        <Text style={style.addButtonText}>
+                          Add
+                        </Text>
+
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        style={style.addButton}
+                        onPress={() => addProduct()}>
+
+                        <AntDesign
+                          name="plus"
+                          size={18}
+                          color="#fff"
+                        />
+
+                        <Text style={style.addButtonText}>
+                          Add
+                        </Text>
+
+                      </TouchableOpacity>
+                    )}
+
+                    <TouchableOpacity
+                      style={style.cancelButton}
+                      onPress={() => oncClose()}>
+
+                      <AntDesign
+                        name="close"
+                        size={18}
+                        color="#555"
+                      />
+
+                      <Text style={style.cancelButtonText}>
+                        Close
+                      </Text>
+
+                    </TouchableOpacity>
+
+                  </View>
+
                 </View>
+
+                {/* LIST */}
+
                 <FlatList
                   data={uselfData}
                   keyExtractor={(item, index) => index.toString()}
-                  renderItem={({item, index}) => (
-                    <TouchableWithoutFeedback>
-                      <View
-                        style={[
-                          style.menu,
-                          {
-                            backgroundColor: '#ecf0f1',
-                            flexDirection: 'row',
-                          },
-                        ]}>
-                        <View
-                          style={{
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}>
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={{ paddingBottom: 20 }}
+                  renderItem={({ item, index }) => (
+
+                    <View style={style.doctorCard}>
+
+                      <TouchableOpacity
+                        style={style.deleteButton}
+                        onPress={() => onDeleteSelf(index)}>
+
+                        <AntDesign
+                          name="delete"
+                          size={22}
+                          color="#FF3B30"
+                        />
+
+                      </TouchableOpacity>
+
+                      <View style={style.row}>
+
+                        <View style={style.avatar}>
+
                           <AntDesign
-                            name="delete"
-                            size={30}
-                            color="red"
-                            onPress={() => {
-                              onDeleteSelf(index);
-                            }}
+                            name="user"
+                            size={24}
+                            color="#fff"
                           />
+
                         </View>
-                        <View
-                          style={{
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            margin: 5,
-                          }}>
-                          <View style={{flexDirection: 'row'}}>
-                            <Text
-                              style={{
-                                fontSize: 12,
-                                fontFamily: 'Lato-Regular',
-                                color: '#000',
-                                margin: 2,
-                                padding: 2,
-                                textAlignVertical: 'center',
-                              }}>
-                              DocName :{' '}
+
+                        <View style={{ flex: 1 }}>
+
+                          <Text style={style.doctorName}>
+                            {item.docName}
+                          </Text>
+
+                          <View style={style.infoRow}>
+
+                            <Text style={style.infoLabel}>
+                              Doctor Code
                             </Text>
-                            <Text
-                              style={{
-                                fontSize: 14,
-                                fontFamily: 'Lato-Bold',
-                                color: '#000',
-                                textAlignVertical: 'center',
-                              }}>
-                              {item.docName}
-                            </Text>
-                          </View>
-                          <View
-                            style={{
-                              flexDirection: 'row',
-                            }}>
-                            <Text
-                              style={{
-                                fontSize: 12,
-                                fontFamily: 'Lato-Regular',
-                                color: '#000',
-                                margin: 2,
-                                padding: 2,
-                                textAlignVertical: 'center',
-                              }}>
-                              DocCode :{' '}
-                            </Text>
-                            <Text
-                              style={{
-                                fontSize: 14,
-                                fontFamily: 'Lato-Bold',
-                                color: '#000',
-                                textAlignVertical: 'center',
-                              }}>
+
+                            <Text style={style.infoValue}>
                               {item.docCode}
                             </Text>
+
                           </View>
-                          <View
-                            style={{
-                              flexDirection: 'row',
-                            }}>
-                            <Text
-                              style={{
-                                fontSize: 12,
-                                fontFamily: 'Lato-Regular',
-                                color: '#000',
-                                margin: 2,
-                                padding: 2,
-                                textAlignVertical: 'center',
-                              }}>
-                              Weekly Qty :{' '}
+
+                          <View style={style.infoRow}>
+
+                            <Text style={style.infoLabel}>
+                              Weekly Qty
                             </Text>
-                            <Text
-                              style={{
-                                fontSize: 14,
-                                fontFamily: 'Lato-Bold',
-                                color: '#000',
-                                textAlignVertical: 'center',
-                              }}>
-                              {item.Qty}
-                            </Text>
+
+                            <View style={style.qtyBadge}>
+                              <Text style={style.qtyBadgeText}>
+                                {item.Qty}
+                              </Text>
+                            </View>
+
                           </View>
+
                         </View>
+
                       </View>
-                    </TouchableWithoutFeedback>
+
+                    </View>
+
                   )}
                 />
+
               </View>
             </View>
           </Modal>
@@ -2260,16 +2511,16 @@ const RCPAN = ({navigation}) => {
             </View>
           </Modal>
         ) : null} */}
-        {isModalVVisible ? (
+        {/* {isModalVVisible ? (
           <Modal
             transparent={true}
             //visible={visible}
             animationType="fade"
-            //onRequestClose={onClose}
+          //onRequestClose={onClose}
           >
             <View style={style.modalOverlay}>
               <View style={style.modalContainer}>
-                <View style={{flexDirection: 'row'}}>
+                <View style={{ flexDirection: 'row' }}>
                   <TouchableOpacity
                     style={{
                       backgroundColor: '#005696',
@@ -2300,7 +2551,7 @@ const RCPAN = ({navigation}) => {
                 <FlatList
                   data={dataList}
                   keyExtractor={(item, index) => index.toString()}
-                  renderItem={({item, index}) => (
+                  renderItem={({ item, index }) => (
                     <TouchableWithoutFeedback>
                       <View
                         style={[
@@ -2357,7 +2608,7 @@ const RCPAN = ({navigation}) => {
                               {item.selfprodName}
                             </Text>
                           </View>
-                          <View style={{flexDirection: 'row'}}>
+                          <View style={{ flexDirection: 'row' }}>
                             <Text
                               style={{
                                 fontSize: 12,
@@ -2437,7 +2688,13 @@ const RCPAN = ({navigation}) => {
               </View>
             </View>
           </Modal>
-        ) : null}
+        ) : null} */}
+        <ModernProductModal
+  visible={isModalVVisible}
+  dataList={dataList}
+  onDeleteView={onDeleteView}
+  onvClose={onvClose}
+/>
       </View>
     </KeyboardAwareLayout>
   );
@@ -2606,7 +2863,7 @@ const style = StyleSheet.create({
     alignItems: 'center',
     shadowColor: '#000',
     shadowOpacity: 0.2,
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowRadius: 10,
     elevation: 5,
   },
@@ -2661,6 +2918,17 @@ const style = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 5,
   },
+  labels: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#334155',
+    marginBottom: 8,
+  },
+  qtyInput: {
+    backgroundColor: '#fff',
+    height: 56,
+  },
+
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
@@ -2695,4 +2963,191 @@ const style = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
   },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+
+  bottomSheet: {
+    backgroundColor: '#F7F9FC',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 10,
+    maxHeight: '82%',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#64748B',
+    marginTop: 3,
+  },
+
+  closeCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#EDF2F7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  formCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+
+    elevation: 5,
+    marginBottom: 18,
+  },
+
+  dropdownModern: {
+    height: 56,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    paddingHorizontal: 15,
+    backgroundColor: '#fff',
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 22,
+  },
+
+  addButton: {
+    flex: 1,
+    height: 54,
+    backgroundColor: '#1565C0',
+    borderRadius: 14,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+
+  addButtonText: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+  cancelButton: {
+    flex: 1,
+    height: 54,
+    backgroundColor: '#ECEFF1',
+    borderRadius: 14,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+
+  cancelButtonText: {
+    color: '#555',
+    fontSize: 17,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+  doctorCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 14,
+
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.10,
+    shadowRadius: 7,
+
+    elevation: 4,
+  },
+  deleteButton: {
+    position: 'absolute',
+    right: 14,
+    top: 14,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#FFECEC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  row: {
+    flexDirection: 'row',
+  },
+
+  avatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#1565C0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+
+  infoLabel: {
+    width: 100,
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  infoValue: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#334155',
+  },
+
+  qtyBadge: {
+    backgroundColor: '#E3F2FD',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+
+  qtyBadgeText: {
+    color: '#1565C0',
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  doctorName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 12,
+    paddingRight: 45,
+  },
+
+
 });
