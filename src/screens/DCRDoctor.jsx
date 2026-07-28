@@ -2649,8 +2649,8 @@ const DCRDoctor = ({ navigation }) => {
             mode="date"
             onConfirm={handleDateConfirm}
             onCancel={hideDatePicker}
-            minimumDate={moment().startOf('month').toDate()}
-            maximumDate={new Date()}
+            // minimumDate={moment().startOf('month').toDate()}
+             maximumDate={new Date()}
             presentationStyle="overFullScreen"
           />
         </View>

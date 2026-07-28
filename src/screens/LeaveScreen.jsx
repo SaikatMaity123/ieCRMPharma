@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useRef, useCallback} from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   SafeAreaView,
   ImageBackground,
@@ -14,11 +14,11 @@ import {
   StatusBar,
   BackHandler,
 } from 'react-native';
-import {Picker} from '@react-native-picker/picker';
+import { Picker } from '@react-native-picker/picker';
 import DatePicker from 'react-native-date-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import moment from 'moment';
-import {KeyboardAwareScrollView} from 'react-native-keyboard-aware-scroll-view';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import NetInfo from '@react-native-community/netinfo';
 import DeviceInfo from 'react-native-device-info';
 import {
@@ -28,9 +28,9 @@ import {
 } from '@react-navigation/native';
 import KeyboardAwareLayout from '../components/custom/KeyboardAwareLayout';
 import Icon from 'react-native-vector-icons/Feather';
-import {Hrms_URL, BASE_URL} from '@env';
-import {MultiSelect, Dropdown} from 'react-native-element-dropdown';
-import {showLocalNotification} from '../services/notifications';
+import { Hrms_URL, BASE_URL } from '@env';
+import { MultiSelect, Dropdown } from 'react-native-element-dropdown';
+import { showLocalNotification } from '../services/notifications';
 
 const LeaveScreen = () => {
   const navigation = useNavigation();
@@ -89,7 +89,7 @@ const LeaveScreen = () => {
       const onBackPress = () => {
         navigation.reset({
           index: 0,
-          routes: [{name: 'approvalDashboard'}],
+          routes: [{ name: 'approvalDashboard' }],
         }); // <-- Your main screen
         return true; // prevent default back behavior
       };
@@ -326,8 +326,8 @@ const LeaveScreen = () => {
   const filteredLeaveTypes =
     leaveDuration?.DurationCode === 'H'
       ? leaveBalance.filter(
-          item => item.label.trim().toUpperCase() === 'CASUAL LEAVE',
-        )
+        item => item.label.trim().toUpperCase() === 'CASUAL LEAVE',
+      )
       : leaveBalance;
 
   // //If later HR says Sick Leave is also allowed,
@@ -365,7 +365,7 @@ const LeaveScreen = () => {
   const handleToDateSelect = date => {
     if (!fromDate) {
       Alert.alert('Invalid Selection', "Please select 'From Date' first.", [
-        {text: 'OK'},
+        { text: 'OK' },
       ]);
       return;
     }
@@ -374,7 +374,7 @@ const LeaveScreen = () => {
       Alert.alert(
         'Invalid Date Selection',
         "From Date can't be greater than To Date",
-        [{text: 'OK'}],
+        [{ text: 'OK' }],
       );
       setToDate(null); // Reset To Date when changing From Date
       setLeaveDays(null);
@@ -401,7 +401,7 @@ const LeaveScreen = () => {
       Alert.alert(
         'Incomplete Form',
         'Please fill all fields before applying.',
-        [{text: 'OK'}],
+        [{ text: 'OK' }],
       );
       return;
     }
@@ -502,7 +502,7 @@ const LeaveScreen = () => {
       Alert.alert(
         'Invalid Selection',
         'Please select a valid Leave Duration.',
-        [{text: 'OK'}],
+        [{ text: 'OK' }],
       );
       return;
     }
@@ -561,7 +561,7 @@ const LeaveScreen = () => {
       Alert.alert(
         'Error',
         'Failed to submit leave request. Please try again.\n ' + error.message,
-        [{text: 'OK'}],
+        [{ text: 'OK' }],
       );
     }
   };
@@ -918,13 +918,13 @@ const LeaveScreen = () => {
         resetForm(); // Reset form fields
         navigation.reset({
           index: 0,
-          routes: [{name: 'approvalDashboard'}],
+          routes: [{ name: 'approvalDashboard' }],
         }); // <-- Your ApprovalDashboard screen
       } else {
         Alert.alert(
           'Error',
           responseData.result || 'Unexpected error occurred.',
-          [{text: 'OK'}],
+          [{ text: 'OK' }],
         );
       }
     } catch (error) {
@@ -932,7 +932,7 @@ const LeaveScreen = () => {
       Alert.alert(
         'Error',
         'Failed to submit leave request. Please try again.',
-        [{text: 'OK'}],
+        [{ text: 'OK' }],
       );
     }
   };
@@ -985,12 +985,12 @@ const LeaveScreen = () => {
     }
     try {
       const url =
-        'https://fcm.googleapis.com/v1/projects/iecrmnotificationapp-5ed0c/messages:send';
-
+        //'https://fcm.googleapis.com/v1/projects/iecrmnotificationapp-5ed0c/messages:send';
+        'https://fcm.googleapis.com/v1/projects/iecrmpharma/messages:send';
       const message = {
         message: {
           token: managerToken,
-          notification: {title, body},
+          notification: { title, body },
         },
       };
 
@@ -1042,7 +1042,7 @@ const LeaveScreen = () => {
 
       const response = await fetch(`${BASE_URL}/login/validlogin`, {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(loginBody),
       });
 
@@ -1177,7 +1177,7 @@ const LeaveScreen = () => {
           <TouchableOpacity
             onPress={() => setOpenFromDate(true)}
             style={styles.dateButton}>
-            <View style={{alignSelf: 'flex-start', paddingHorizontal: 10}}>
+            <View style={{ alignSelf: 'flex-start', paddingHorizontal: 10 }}>
               <Text style={styles.dateText}>
                 {fromDate ? fromDate.toDateString() : 'Select Date'}
               </Text>
@@ -1201,7 +1201,7 @@ const LeaveScreen = () => {
           <TouchableOpacity
             onPress={() => setOpenToDate(true)}
             style={styles.dateButton}>
-            <View style={{alignSelf: 'flex-start', paddingHorizontal: 10}}>
+            <View style={{ alignSelf: 'flex-start', paddingHorizontal: 10 }}>
               <Text style={styles.dateText}>
                 {toDate ? toDate.toDateString() : 'Select Date'}
               </Text>
@@ -1236,10 +1236,10 @@ const LeaveScreen = () => {
                 <Text style={styles.label}>Encashment</Text>
                 <Dropdown
                   style={styles.picker1}
-                  containerStyle={{borderRadius: 8}}
+                  containerStyle={{ borderRadius: 8 }}
                   data={[
-                    {label: 'YES', value: '1'},
-                    {label: 'NO', value: '0'},
+                    { label: 'YES', value: '1' },
+                    { label: 'NO', value: '0' },
                   ]}
                   labelField="label"
                   valueField="value"
@@ -1261,7 +1261,7 @@ const LeaveScreen = () => {
             numberOfLines={3}
             value={reason}
             onChangeText={setReason}
-            onFocus={() => scrollRef.current.scrollToEnd({animated: true})}
+            onFocus={() => scrollRef.current.scrollToEnd({ animated: true })}
           />
 
           {/* <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -1540,7 +1540,7 @@ const styles = StyleSheet.create({
 
     // Shadow for iOS
     shadowColor: '#005696',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
 

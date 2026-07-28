@@ -594,22 +594,66 @@ const RCPAN = ({ navigation }) => {
     }
   };
 
+  // const oncClose = () => {
+  //   setModalVisible(false);
+  //   console.log(uselfData);
+  //   selfData([]);
+  //   setSelfProduct([]);
+  //   setCompProduct([]);
+  //   setCompCompanyList([]);
+  //   setUnit([]);
+  //   setMRP('');
+  //   setLot('');
+  //   setRackStock('');
+  //   setPackSize('');
+  //   setQty('');
+
+  //   setDataList([...dataList, ...uselfData]); // Append new data
+  // };
+
   const oncClose = () => {
     setModalVisible(false);
-    console.log(uselfData);
+    setIsFocus(false);
+
+    // No doctor was added:
+    // preserve all selected product details.
+    if (uselfData.length === 0) {
+      setDLabel('');
+      setDValue('');
+      setQty('');
+      return;
+    }
+
+    // Doctors were added:
+    // append them safely to the final list.
+    setDataList(previousList => [
+      ...previousList,
+      ...uselfData,
+    ]);
+
+    // Clear only temporary doctor entries.
     selfData([]);
     setSelfProduct([]);
-    setCompProduct([]);
-    setCompCompanyList([]);
+
+    // Reset selected doctor fields.
+    setDLabel('');
+    setDValue('');
+    setQty('');
+
+    // Clear product form only after doctor data was added.
+    setSelfProductCode('');
+    setSelfProductName('');
+
+    setUnitCode('');
+    setUnitName('');
     setUnit([]);
+
     setMRP('');
     setLot('');
     setRackStock('');
     setPackSize('');
-    setQty('');
-
-    setDataList([...dataList, ...uselfData]); // Append new data
   };
+
   const onvClose = () => {
     setModalVVisible(false);
   };
@@ -620,39 +664,115 @@ const RCPAN = ({ navigation }) => {
     setModalCCompany(false);
   };
 
+  // const addProduct = () => {
+  //   if (useQty === '') {
+  //     Alert.alert('Quantity is missing');
+  //     return;
+  //   }
+  //   selfData([
+  //     ...uselfData,
+  //     {
+  //       selfprodCode: useSelfProductCode,
+  //       selfprodName: useSelfProductName,
+  //       packsize: usePackSize,
+  //       packUnitName: useUnitName,
+  //       packUnitCode: useUnitCode,
+  //       mrp: useMRP,
+  //       lot: useLot,
+  //       rackstock: useRackStock,
+  //       //doctorData: docData,
+  //       Qty: useQty,
+  //       docName: useDLabel,
+  //       docCode: useDValue,
+  //     },
+  //   ]);
+
+  //   selfTData([
+  //     ...uselfTData,
+  //     {
+  //       value: useSelfProductCode,
+  //       label: useSelfProductName,
+  //     },
+  //   ]);
+
+  //   setQty('');
+  // };
+
   const addProduct = () => {
-    if (useQty === '') {
-      Alert.alert('Quantity is missing');
+    if (!useDValue) {
+      Alert.alert('Select Doctor');
       return;
     }
-    selfData([
-      ...uselfData,
-      {
-        selfprodCode: useSelfProductCode,
-        selfprodName: useSelfProductName,
-        packsize: usePackSize,
-        packUnitName: useUnitName,
-        packUnitCode: useUnitCode,
-        mrp: useMRP,
-        lot: useLot,
-        rackstock: useRackStock,
-        //doctorData: docData,
-        Qty: useQty,
-        docName: useDLabel,
-        docCode: useDValue,
-      },
+
+    if (!useQty || Number(useQty) <= 0) {
+      Alert.alert('Enter a valid weekly quantity');
+      return;
+    }
+
+    const duplicateInModal = uselfData.some(
+      item =>
+        String(item.selfprodCode) === String(useSelfProductCode) &&
+        String(item.docCode) === String(useDValue),
+    );
+
+    const duplicateInSavedList = dataList.some(
+      item =>
+        String(item.selfprodCode) === String(useSelfProductCode) &&
+        String(item.docCode) === String(useDValue),
+    );
+
+    if (duplicateInModal || duplicateInSavedList) {
+      Alert.alert(
+        'Duplicate Entry',
+        `${useDLabel} has already been added for ${useSelfProductName}.`,
+      );
+      return;
+    }
+
+    const newEntry = {
+      selfprodCode: useSelfProductCode,
+      selfprodName: useSelfProductName,
+      packsize: usePackSize,
+      packUnitName: useUnitName,
+      packUnitCode: useUnitCode,
+      mrp: useMRP,
+      lot: useLot,
+      rackstock: useRackStock,
+      Qty: useQty,
+      docName: useDLabel,
+      docCode: useDValue,
+    };
+
+    selfData(previousData => [
+      ...previousData,
+      newEntry,
     ]);
 
-    selfTData([
-      ...uselfTData,
-      {
-        value: useSelfProductCode,
-        label: useSelfProductName,
-      },
-    ]);
+    selfTData(previousData => {
+      const productAlreadyExists = previousData.some(
+        item =>
+          String(item.value) === String(useSelfProductCode),
+      );
 
+      if (productAlreadyExists) {
+        return previousData;
+      }
+
+      return [
+        ...previousData,
+        {
+          value: useSelfProductCode,
+          label: useSelfProductName,
+        },
+      ];
+    });
+
+    // Clear only doctor-related fields
+    setDLabel('');
+    setDValue('');
     setQty('');
   };
+
   const addProductComp = () => {
     if (useQty === '') {
       Alert.alert('quantity is Missing');
@@ -791,7 +911,9 @@ const RCPAN = ({ navigation }) => {
       '&IDProduct=' +
       IDProduct;
     try {
+      
       const response = await fetch(url);
+      console.log('fetchUData URL:', url); // Log the URL for debugging
       const jsonResponse = await response.json();
 
       setMRP(jsonResponse.MRP.toString());
@@ -913,6 +1035,19 @@ const RCPAN = ({ navigation }) => {
   };
 
   const handleAddCompProduct = async () => {
+    if (useCompProdName === '') {
+      Alert.alert('Type Product Name');
+      return;
+    } else if (useCompCompanyName === '') {
+      Alert.alert('Type Company Name');
+      return;
+    } else if (useCompAddPackSize === '') {
+      Alert.alert('Type Pack Size');
+      return;
+    } else if (useUnitCode === '') {
+      Alert.alert('Select Unit');
+      return;
+    }
     //if()
     const data_api = {
       CompProductName: useCompProdName,
@@ -1025,7 +1160,7 @@ const RCPAN = ({ navigation }) => {
                 labelField="label"
                 valueField="value"
                 //dropdownPosition="top"
-                placeholder={!isFocus ? 'Select Retailer' : '...'}
+                placeholder={!isFocus ? 'Select Retailer' : 'select Area First ...'}
                 searchPlaceholder="Search..."
                 //value={wtdataLabel}
                 onFocus={() => setIsFocus(true)}
@@ -1133,6 +1268,7 @@ const RCPAN = ({ navigation }) => {
                   placeholder="Pack Size"
                   placeholderTextColor="#555"
                   inputMode="numeric"
+                  editable={false}
                   value={usePackSize}
                   onChangeText={text => setPackSize(text)}
                 />
@@ -1175,6 +1311,7 @@ const RCPAN = ({ navigation }) => {
                 style={[style.textInput, { marginBottom: 5 }]}
                 placeholder="MRP"
                 placeholderTextColor="#555"
+                editable={false}
                 value={useMRP}
                 onChangeText={text => setMRP(text)}
               />
@@ -1183,7 +1320,7 @@ const RCPAN = ({ navigation }) => {
                 mode="outlined"
                 autoCapitalize="none"
                 autoCorrect={false}
-                inputMode="default"
+                inputMode="numeric"
                 style={[style.textInput, { marginBottom: 5 }]}
                 placeholder="LOT/SCHEME"
                 placeholderTextColor="#555"
@@ -1498,7 +1635,7 @@ const RCPAN = ({ navigation }) => {
                 mode="outlined"
                 autoCapitalize="none"
                 autoCorrect={false}
-                inputMode="default"
+                inputMode="numeric"
                 style={[style.textInput, { marginBottom: 5 }]}
                 placeholder="LOT/SCHEME"
                 placeholderTextColor="#555"
@@ -2048,7 +2185,7 @@ const RCPAN = ({ navigation }) => {
                     Doctor
                   </Text>
 
-                    <Dropdown
+                  <Dropdown
                     style={style.dropdownModern}
                     placeholderStyle={{
                       fontSize: 15,
@@ -2072,6 +2209,7 @@ const RCPAN = ({ navigation }) => {
                     maxHeight={300}
                     labelField="label"
                     valueField="value"
+                     value={useDValue}
                     placeholder={!isFocus ? 'Select Doctor ' : '...'}
                     searchPlaceholder="Search"
                     onFocus={() => setIsFocus(true)}
@@ -2113,7 +2251,10 @@ const RCPAN = ({ navigation }) => {
                     value={useQty}
                     keyboardType="number-pad"
                     placeholder="Enter Weekly Qty"
-                    onChangeText={text => setQty(text)}
+                    onChangeText={text => {
+                      const integerOnly = text.replace(/[^0-9]/g, '');
+                      setQty(integerOnly);
+                    }}
                     style={style.qtyInput}
                   />
 
@@ -2690,11 +2831,11 @@ const RCPAN = ({ navigation }) => {
           </Modal>
         ) : null} */}
         <ModernProductModal
-  visible={isModalVVisible}
-  dataList={dataList}
-  onDeleteView={onDeleteView}
-  onvClose={onvClose}
-/>
+          visible={isModalVVisible}
+          dataList={dataList}
+          onDeleteView={onDeleteView}
+          onvClose={onvClose}
+        />
       </View>
     </KeyboardAwareLayout>
   );

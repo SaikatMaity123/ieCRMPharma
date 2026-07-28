@@ -82,8 +82,8 @@ android {
         applicationId "com.ieCRMPHARMA"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 18
-        versionName "18.0"
+        versionCode 19
+        versionName "19.0"
         // This block is different from the one you use to link Gradle
         // to your CMake or ndk-build script.
 //        externalNativeBuild {
